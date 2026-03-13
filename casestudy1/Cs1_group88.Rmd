@@ -1,0 +1,614 @@
+---
+title: "Case Study 1"
+subtitle: "AKSTA Statistical Computing"
+output: pdf_document
+header-includes:
+  - \usepackage{booktabs}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+*The  .Rmd and .html (alternatively the .pdf) should be uploaded in TUWEL by the deadline. Refrain from using explanatory comments in the R code chunks but write them as text instead. Please consider the AI Guidelines as specified in the organizational slides (you can use the table). Points will be deducted if the submitted file is not in a decent form; answers should be answering the concrete questions and not discuss topics in general - please be mindful of our tutors' time and the size of the course. *
+
+
+\begin{table}[ht]
+\centering
+\caption{You can use and extend this table to specify your AI usage (if used at all).}
+\begin{tabular}{l|rrr}
+\toprule
+ \textbf{AI usage} & \textbf{Task 1} & \textbf{Task 2} &  \ldots \\
+\midrule
+\textit{Correcting faulty code}   &  no  &  &    \\
+\textit{Improving existing code}   &  little   &  &     \\
+\textit{Generating new code}   &  medium   &  &    \\
+\textit{Layout and formatting}  &  heavy   &  &     \\
+\textit{Text correction}   &    &  &    \\
+ \ldots  &    &  &    \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+# 1. Ratio of Fibonacci numbers (1 point)
+
+## a. 
+Write two different R functions which return the sequence $r_{i}=F_{i+1}/F_i$
+for $i=1,\ldots,n$ where $F_i$ is the $i$th Fibonacci number, once using `for`
+and once using `while`.
+```{r}
+# for version 
+fibonacci_ratio_for <- function(n) {
+  fib <- c(1, 1)
+  if (n >= 2) {
+    for (i in 3:(n + 1)) {
+      fib[i] <- fib[i-1] + fib[i-2]
+    }
+  }
+  ratios <- fib[2:(n+1)] / fib[1:n]
+  return(ratios)
+}
+
+# while version
+fibonacci_ratio_while <- function(n) {
+  fib <- c(1, 1)
+  i <- 3
+  while (i <= n + 1) {
+    fib[i] <- fib[i-1] + fib[i-2]
+    i <- i + 1
+  }
+  ratios <- fib[2:(n+1)] / fib[1:n]
+  return(ratios)
+}
+```
+## b. 
+Benchmark the two functions for $n=200$ and $n=2000$ (you can use package **microbenchmark** or package **bench** for this purpose). Which function is faster?
+```{r}
+library(microbenchmark)
+
+# Benchmark for n = 200
+benchmark_200 <- microbenchmark(
+  for_loop = fibonacci_ratio_for(200),
+  while_loop = fibonacci_ratio_while(200),
+  times = 100
+)
+
+print(benchmark_200)
+
+# Benchmark for n = 2000
+benchmark_2000 <- microbenchmark(
+  for_loop = fibonacci_ratio_for(2000),
+  while_loop = fibonacci_ratio_while(2000),
+  times = 100
+)
+
+print(benchmark_2000)
+```
+Based on the benchmarking results, the for loop implementation is slightly faster than the while loop, which kinda makes sense because in a while loop, the condition must be evaluated before every iteration, accumulating a slight overhad.
+
+## c.
+Plot the sequence for  $n=100$. 
+For which $n$ does it start to stabilize to a value?
+What number does the sequence converge to?
+
+
+```{r}
+ratios <- fibonacci_ratio_for(100)
+
+plot(1:100, ratios, type = "l",
+     xlab = "i", ylab = expression(r[i]),
+     main = "Ratio of consecutive Fibonacci numbers")
+abline(h = (1 + sqrt(5)) / 2, col = "red", lty = 2)
+```
+
+
+# 2. Gamma function (1 point)
+
+## a. 
+Write a function to compute the following for $n$ a positive integer
+using the `gamma` function in base R.
+$$
+\rho_n =\frac{\Gamma((n-1)/2)}{\Gamma(1/2)\Gamma((n - 2)/2)}
+$$
+
+```{r}
+rho <- function(n) {
+  gamma((n - 1) / 2) / (gamma(1 / 2) * gamma((n - 2) / 2))
+}
+rho(346)
+```
+
+## b. 
+
+Try $n = 2000$. What do you observe? Why do you think the observed behavior happens?
+```{r}
+rho(2000)
+```
+We get NaN , it could be because the function is being calculated with a high value. After a few trials with lower values, I observed that anything over 345 produces NaN.If we split up the denominator and numerator and calculate them individually, we receive the following:
+
+```{r formula individual, echo=TRUE}
+n_calculation_numerator <- function(n){
+ result <- (gamma((n - 1)/2))
+  print(result)
+}
+
+n_calculation_denominator <- function(n){
+ result <- (gamma(1/2) * gamma((n-2)/2))
+  print(result)
+}
+cat("Numerator result for n = 2000: \n")
+n_calculation_numerator(2000)
+cat("Denominator result for n = 2000: \n")
+n_calculation_denominator(2000)
+```
+Both the numerator and denominator individually return Inf for n=2000. R cannot divide infinite values by one another, which is why the final result is NaN
+
+## c.
+Write an implementation which can also deal with large values of $n>1000$. 
+
+The solution to this problem is to handle large values using a log scale. We shrink the values by applying a logarithm and then exponentiate the result to convert it back to the normal scale. For this purpose, we use lgamma(). (ref: https://stackoverflow.com/questions/42821156/how-to-overcome-the-gamma-function-limitation-in-r).  
+```{r log calculation, echo=TRUE}
+rho_stable <- function(n) {
+  exp(lgamma((n - 1) / 2) - lgamma(1 / 2) - lgamma((n - 2) / 2))
+}
+rho_stable(2000)
+```
+
+
+## d. 
+Plot $\rho_n/\sqrt{n}$ for different values of $n$. Can you guess the limit of $\rho_n/\sqrt{n}$ for $n \rightarrow\infty$?
+
+
+```{r}
+n_vals <- seq(3, 2000, by = 10)
+rho_vals <- sapply(n_vals, rho_stable)
+
+plot(n_vals, rho_vals / sqrt(n_vals), type = "l",
+     xlab = "n", ylab = expression(rho[n] / sqrt(n)),
+     main = expression(rho[n] / sqrt(n) ~ "as n increases"))
+
+
+n_vals <- seq(3, 100, by = 10)
+rho_vals <- sapply(n_vals, rho_stable)
+
+plot(n_vals, rho_vals / sqrt(n_vals), type = "l",
+     xlab = "n", ylab = expression(rho[n] / sqrt(n)),
+     main = expression(rho[n] / sqrt(n) ~ "as n increases"))
+
+```
+Plotting the ratio for increasing values of $n$ shows that the curve approaches approximately $0.4$. For smaller ranges of $n$, the convergence toward this value appears slower. Based on the behavior for larger $n$, it is reasonable to guess that the limit as $n \to \infty$ is about $0.4$.
+
+
+# 3. Weak law of large numbers (1.5 points)
+
+The law of large numbers states that if you repeat an experiment independently a large number of times and average the result, what you obtain should be close to the expected value. Formally, the weak law of large numbers states that if 
+$X_1, X_2, \ldots X_n$ are independently and identically 
+distributed (iid) random variables with a finite expected value
+$E(X_i)=\mu<\infty$, then, for any $\epsilon > 0$
+$\lim_{n\rightarrow \infty} P(|\bar X_n-\mu|>\epsilon)=0$
+where $\bar X_n=\frac{X_1+X_2+\ldots+X_n}{n}$ is the sample mean (the sample mean converges in probability to the expected value).
+
+
+## a. 
+
+- In R, simulate rolling a fair 6-sided die $n=10\,000$ times using vectorized functions. 
+- After each roll, compute the cumulative mean of all previous rolls. 
+
+- Plot the running average against the number of rolls and comment on the result.
+
+
+```{r}
+set.seed(42)
+n <- 10000
+rolls <- sample(1:6, n, replace = TRUE)
+running_mean <- cumsum(rolls) / 1:n
+
+plot(1:n, running_mean, type = "l",
+     xlab = "Number of rolls", ylab = "Running mean",
+     main = "Running average of a fair die",
+     ylim = c(1, 6))
+abline(h = 3.5, col = "red", lty = 2)
+```
+   As the number of rolls increases, the running average converges towards the expected value of 3.5. This illustrates the weak law of large numbers, with more observations, our sample mean gets closer to the true population mean.
+   
+## b. 
+- Replicate the die-rolling experiment 
+ $M=50$ times using a for loop. 
+This will result in $50$
+paths which you can plot against the number of rolls.
+
+- Plot all 50 paths on the same graph to observe the variation in the running averages.
+
+```{r}
+
+M <- 50
+n <- 10000
+paths <- matrix(NA, nrow = M, ncol = n)
+
+for (m in 1:M) {
+  rolls <- sample(1:6, n, replace = TRUE)
+  paths[m, ] <- cumsum(rolls) / 1:n
+}
+
+plot(1:n, paths[1, ], type = "l", col = rgb(0,0,1,0.3),
+     ylim = c(2.5, 4.5),
+     xlab = "Number of rolls", ylab = "Running mean",
+     main = "50 replications of running average")
+
+# Add the remaining 49 paths
+for (m in 2:M) {
+  lines(1:n, paths[m, ], col = rgb(0,0,1,0.3))
+}
+
+abline(h = 3.5, col = "red", lty = 2)
+```
+We  can see that all paths start with high variability but converge towards the expected value of 3.5 as the number of rolls increases. Some paths approach the expected value from above, others from below, but they all tend to get closer to 3.5 as n increases.
+
+## c.
+What is the theoretical expected value of a fair 6-sided die?
+
+
+For a fair 6-sided die, the possible outcomes are $\{1, 2, 3, 4, 5, 6\}$, each with probability $\frac{1}{6}$.
+
+The theoretical expected value is:
+
+$$E(X) = \sum_{i=1}^{6} i \cdot P(X = i) = \sum_{i=1}^{6} i \cdot \frac{1}{6} = \frac{1 + 2 + 3 + 4 + 5 + 6}{6} = \frac{21}{6} = 3.5$$
+## d. 
+Comment on how the running mean of the paths behaves relative to the expected value  as $n$ increases.
+
+
+```{r}
+abs_diff <- abs(paths - 3.5)
+mean_abs_diff <- colMeans(abs_diff)
+
+plot(1:ncol(paths), mean_abs_diff, type = "l",
+     xlab = "Number of rolls", ylab = "Mean absolute difference",
+     main = "Convergence to Expected Value")
+```
+
+
+As the number of observations $n$ grows, the average absolute difference between the running mean and the expected value becomes smaller. This behavior agrees with the weak law of large numbers.At the beginning, when only a few observations are available, the running mean fluctuates quite a lot because of the randomness in small samples. However, as more die rolls are added, the aggregate behavior becomes more predictable  and centers around the expected value of 3.5.
+
+## e. 
+
+- Modify the code in b. to use a while loop.
+
+- Stop the loop when the proportion of replications where the difference between the running average and the expected value lies outside the interval 
+$[-\epsilon,\epsilon]$ is less than 0.05. Use $\epsilon = 0.01$. 
+
+- How high is $n$ at  the end of the loop?
+
+```{r}
+set.seed(44)
+epsilon <- 0.01
+M <- 50
+batch <- 100
+
+n_current <- 0
+proportion_outside <- 1
+running_averages <- matrix(NA, nrow = M, ncol = batch)
+
+while (proportion_outside >= 0.05) {
+  n_current <- n_current + batch
+  
+  if (ncol(running_averages) < n_current) {
+    running_averages <- cbind(running_averages, matrix(NA, nrow = M, ncol = batch))
+  }
+  
+  for (m in 1:M) {
+    new_rolls <- sample(1:6, batch, replace = TRUE)
+    
+    if (n_current == batch) {
+      running_averages[m, 1:batch] <- cumsum(new_rolls) / (1:batch)
+    } else {
+      prev_sum <- running_averages[m, n_current - batch] * (n_current - batch)
+      new_sums <- prev_sum + cumsum(new_rolls)
+      running_averages[m, (n_current - batch + 1):n_current] <- new_sums / ((n_current - batch + 1):n_current)
+    }
+  }
+  
+  proportion_outside <- mean(abs(running_averages[, n_current] - 3.5) > epsilon)
+}
+
+cat("The loop terminated at n =", n_current, "with proportion outside epsilon =", proportion_outside, "\n")
+```
+   The loop terminated at $n = 101900$. At this point, fewer than 5% of the replications have a running mean that differs from the expected value (3.5) by more than $\epsilon = 0.01$, meaning that about 95% of the running means lie within this interval.
+
+## f. 
+
+- Repeat the analysis in b, but instead of simulating from a 
+discrete uniform distribution, simulate from a continuous standard cauchy distribution using `rcauchy()`. The (standard) cauchy distribution arises from  the ratio of two independent 
+mean zero (standard) normally distributed random variables.
+
+- Plot the running mean against increasing 
+$n$. Comment on whether the weak Law of Large Numbers seems to hold for this distribution.
+Explain why or why not.
+
+
+```{r}
+set.seed(42)
+M <- 50
+n <- 10000
+paths_cauchy <- matrix(NA, nrow = M, ncol = n)
+
+for (m in 1:M) {
+  draws <- rcauchy(n)
+  paths_cauchy[m, ] <- cumsum(draws) / 1:n
+}
+
+plot(1:n, paths_cauchy[1, ], type = "l", col = rgb(0,0,1,0.3),
+     ylim = c(-10, 10),
+     xlab = "Number of rolls", ylab = "Running mean",
+     main = "Running mean - Cauchy distribution")
+for (m in 2:M) {
+  lines(1:n, paths_cauchy[m, ], col = rgb(0,0,1,0.3))
+}
+abline(h = 0, col = "red", lty = 2)
+plot(1:n, paths_cauchy[1, ], type = "l", col = rgb(0,0,1,0.3),
+     ylim = c(-3, 3),
+     xlab = "n", ylab = "Running mean",
+     main = "Running mean - Cauchy (zoomed)")
+for (m in 2:M) {
+  lines(1:n, paths_cauchy[m, ], col = rgb(0,0,1,0.3))
+}
+abline(h = 0, col = "red", lty = 2)
+```
+       The weak Law of Large Numbers does not seem to hold for the Cauchy distribution.its because the the distribution has heavier tails, those extremme values  influence the running mean, and since the Cauchy distribution has no finite expected value, the sample mean does not stabilize as the sample size increases.
+
+# 4. Central limit theorem (1.5 points)
+
+The central limit theorem states that, under certain conditions, the sum of a large number of random variables is approximately normal. Consider the case where
+$X_1, X_2,\ldots,X_n$ are i.i.d. random variables
+with finite expected values ($E(X_i)=\mu<\infty$)
+ and variances $(Var(X_i)=\sigma^2<\infty)$.
+The central limit theorem states that the cumulative distribution function  (CDF)
+of the normalized random variable
+$$
+Z_n = \frac{\bar X_n - \mu}{\sigma/\sqrt{n}}
+$$
+converges to the standard normal CDF as $n\rightarrow\infty$.
+
+## a. 
+Derive the expected value of the sample mean $\bar X_n=\frac{X_1+X_2+\ldots+X_n}{n}$.
+ 
+
+Placing $\bar{X}_n$ inside the expectation operator and applying linearity, we get:
+$$E(\bar{X}_n) = E\left(\frac{X_1 + X_2 + \cdots + X_n}{n}\right) = \frac{1}{n}\Big[E(X_1) + E(X_2) + \cdots + E(X_n)\Big]$$
+Since all $X_i$ are independently and identically distributed, they share the same mean $E(X_i) = \mu$. Substituting:
+$$E(\bar{X}_n) = \frac{1}{n}(\mu + \mu + \cdots + \mu) = \frac{n\mu}{n} = \mu$$
+Thus $E(\bar{X}_n) = \mu$, meaning the expected value of the sample mean equals the true mean regardless of sample size.
+
+
+## b. 
+Derive the variance of the sample mean $\bar X_n=\frac{X_1+X_2+\ldots+X_n}{n}$.
+
+Since the sample mean is defined as $\bar{X}_n = \frac{X_1 + X_2 + \ldots + X_n}{n}$, we start with:
+$$Var(\bar{X}_n) = Var\left(\frac{X_1 + X_2 + \cdots + X_n}{n}\right)$$
+Since the $X_i$ are independent, the variance of their sum equals the sum of their variances. Bringing $\frac{1}{n}$ out of the variance operator (where it gets squared to $\frac{1}{n^2}$):
+$$Var(\bar{X}_n) = \frac{1}{n^2} \Big[Var(X_1) + Var(X_2) + \cdots + Var(X_n)\Big]$$
+Since all $X_i$ are identically distributed with $Var(X_i) = \sigma^2$:
+$$Var(\bar{X}_n) = \frac{1}{n^2}(\sigma^2 + \sigma^2 + \cdots + \sigma^2) = \frac{n\sigma^2}{n^2} = \frac{\sigma^2}{n}$$
+Thus $Var(\bar{X}_n) = \frac{\sigma^2}{n}$, meaning the variance of the sample mean decreases as $n$ increases.
+
+
+## c. 
+The central limit theorem makes few assumption on the distribution of the random variables $X_i$.
+Consider again the die-rolling experiment where $X_i$
+is the random variable giving the number in roll $i$.
+
+- Simulate Die Rolls: For each value of $n$ (where 
+$n=\{100,1000,10000\}$), simulate rolling a die 
+$n$ times.
+Record the mean of the $n$ rolls.
+
+- Repeat the above process $M=100$ times for each value of
+$n$. This will give you 100 sample means for each $n$.
+
+- Plot a histogram of the 100 sample means for each value of $n$. Observe the shape of the histograms.
+
+- Discuss how the distribution of the sample means changes as $n$ increases. Comment on whether the histograms appear to approach a normal distribution as $n$, illustrating the Central Limit Theorem.
+
+
+```{r}
+set.seed(44)
+M <- 100
+n_vals <- c(100, 1000, 10000)
+
+for (n in n_vals) {
+  sample_means <- replicate(M, mean(sample(1:6, n, replace = TRUE)))
+  hist(sample_means, main = paste("n =", n),
+       xlab = "Sample mean", freq = FALSE,
+       col = "lightblue",
+       xlim = c(3, 4),  
+       breaks = 20)
+  curve(dnorm(x, mean = 3.5, sd = sqrt(35/12/n)),
+        add = TRUE, col = "red", lwd = 2)
+}
+```
+
+ The variance is highest for $n = 100$ and lowest for $n = 10000$. For a fair die, the true mean is $\mu = 3.5$, and as $n$ increases, the sample means spread less around this value.
+
+For $n = 100$, the histogram shows a rough bell shape, still with some irregularity. With $n = 1000$, the distribution becomes smoother and more symmetric. For $n = 10000$, the distribution of sample means closely matches a normal bell shaped curve.
+
+This is consistent with the Central Limit Theorem. As $n$ increases, the distribution of the sample mean becomes increasingly normal and more values concentrate around $\mu = 3.5$. This holds regardless of underlying distribution.
+
+## d. 
+Compute expected value $\mu$ and the variance  $\sigma^2$ for the random variable $X_i$ (giving the number in die-roll $i$), which follows a discrete uniform distribution.
+
+```{r}
+mu <- (1 + 2 + 3 + 4 + 5 + 6) / 6
+cat("Calculated mean: ", mu, "\n")
+
+variance <- ((1^2 + 2^2 + 3^2 + 4^2 + 5^2 + 6^2)/6) - mu^2
+cat("Calculated variance: ", variance, "\n")
+```
+
+## e.
+Now that you computed $\mu$ and $\sigma^2$, 
+consider $Z_n$.
+
+- For each value of  $n$ (where $n=\{100,1000,10000\}$)
+ and for 
+$M=\{100,1000,10000\}$ replications, simulate the rolling of $n$ dice and calculate the $Z_n$.
+
+- Plot histograms of $Z_n$ for each combination of 
+$n$ and  $M$.
+
+- Discuss how the distribution of $Z_n$
+changes as  $n$  and  $M$ increase.
+Comment on whether the distributions of 
+$Z_n$ appear to approach a normal distribution, illustrating the Central Limit Theorem.
+
+
+```{r}
+
+set.seed(44)
+mu <- 3.5
+sigma2 <- 35/12
+n_vals <- c(100, 1000, 10000)
+M_vals <- c(100, 1000, 10000)
+
+par(mfrow = c(3, 3), mar = c(4, 4, 2, 1))
+for (n in n_vals) {
+  for (M in M_vals) {
+    Zn <- replicate(M, {
+      rolls <- sample(1:6, n, replace = TRUE)
+      (mean(rolls) - mu) / sqrt(sigma2 / n)
+    })
+    hist(Zn, main = paste("n =", n, ", M =", M),
+         xlab = expression(Z[n]), freq = FALSE,
+         col = "lightblue", xlim = c(-4, 4))
+    curve(dnorm(x), add = TRUE, col = "red", lwd = 2)
+  }
+}
+par(mfrow = c(1, 1))
+```
+    
+# 5. Readable and efficient code (1 points)
+
+Read over the code below. 
+
+## a. 
+Explain (in text) what the code does.
+
+**(i)** In the first code block, two vectors, x and z, are initialized with 100 observations each from a normal distribution. Even though the variables are uncorrelated, a linear model of x on z is fitted. The residuals from this model are then transformed using the sine function, a small offset is added, and the result is used to update x before fitting the model again. This procedure is repeated four times.
+To ensure that x does not become too small during the iterations, a threshold is checked in each step. Finally, the modified vector x is returned.
+
+
+
+**(ii)** In the second code block, two variables are again initialized with values from a normal distribution. In this case, however, the variables are correlated. The code then evaluates a linear model of y on x using 4-fold cross-validation. First, the model is fitted using all observations except the first 250. Predictions are then made for these excluded observations, and the RMSE is calculated. This process is repeated three more times, each time leaving out a different block of 250 observations so that every data point serves once as part of the test set.
+
+
+## b.
+Explain (in text) what you would change to make the code more readable.
+
+Both code blocks  violate the DRY principle,large parts are repetitive and could be replaced by a loop. In particular, we could use a loop for the residual computation and fitting process in (i) and for the train-predict evaluate procedure in (ii). In the loops, hard coded values could be replaced with descriptively named variables, e.g. threshold. Descriptions can then be provided at initialization and where they are updated
+## c.
+Change the code according to b. and wrap it in a function. This function should have at most 10 lines (without adding commands to more lines such as `x <- 1; y <- 2`. Such commands will count as 2 lines!). Check that the function called on the same input outputs the same as the provided code.
+
+```{r eval=FALSE}
+process_residuals <- function() {
+  set.seed(1)
+  x <- rnorm(100); z <- rnorm(100)
+  for (i in 1:4) {
+    if (sum(x >= i/1000) < i) stop(paste("step",i,"requires",i,"obs >=",i/1000))
+    x <- i * sin(lm(x ~ z)$residuals) + i * 0.01
+  }
+  x
+}
+```
+
+```{r eval=FALSE}
+cross_validate <- function() {
+  set.seed(1)
+  x <- rnorm(1000); y <- 2 + x + rnorm(1000)
+  df <- data.frame(x, y)
+  r <- numeric(4)
+  for (i in 1:4) {
+    idx <- ((i-1)*250+1):(i*250)
+    r[i] <- sqrt(mean((predict(lm(y~x,data=df[-idx,]),newdata=df[idx,])-df[idx,"y"])^2))
+  }
+  r
+}
+```
+
+
+# 6. Measuring and improving performance (2 points)
+
+Have a look at the code of the function below. It is a function for performing a Kruskal-Wallis test, a robust non-parametric method for testing whether samples come from the same distribution. (Note: we assume no missing values are present in `x`). 
+```{r}
+kwtest <- function (x, g, ...) 
+{
+    if (is.list(x)) {
+        if (length(x) < 2L) 
+            stop("'x' must be a list with at least 2 elements")
+        if (!missing(g)) 
+            warning("'x' is a list, so ignoring argument 'g'")
+        if (!all(sapply(x, is.numeric))) 
+            warning("some elements of 'x' are not numeric and will be coerced to numeric")
+        k <- length(x)
+        l <- lengths(x)
+        if (any(l == 0L)) 
+            stop("all groups must contain data")
+        g <- factor(rep.int(seq_len(k), l))
+        x <- unlist(x)
+    }
+    else {
+        if (length(x) != length(g)) 
+            stop("'x' and 'g' must have the same length")
+        g <- factor(g)
+        k <- nlevels(g)
+        if (k < 2L) 
+            stop("all observations are in the same group")
+    }
+    n <- length(x)
+    if (n < 2L) 
+        stop("not enough observations")
+    r <- rank(x)
+    TIES <- table(x)
+    STATISTIC <- sum(tapply(r, g, sum)^2/tapply(r, g, length))
+    STATISTIC <- ((12 * STATISTIC/(n * (n + 1)) - 3 * (n + 1))/(1 - 
+        sum(TIES^3 - TIES)/(n^3 - n)))
+    PARAMETER <- k - 1L
+    PVAL <- pchisq(STATISTIC, PARAMETER, lower.tail = FALSE)
+    names(STATISTIC) <- "Kruskal-Wallis chi-squared"
+    names(PARAMETER) <- "df"
+    RVAL <- list(statistic = STATISTIC, parameter = PARAMETER, 
+        p.value = PVAL, method = "Kruskal-Wallis rank sum test")
+    return(RVAL)
+}
+```
+
+## a. 
+Write a pseudo code outlining what the function does.
+
+## b. 
+For example data, call the function in two ways: once using `x` as a list and once using `x` as a vector with a corresponding `g` argument. Ensure that the two different function calls return the same thing by aligning the inputs.
+
+## c. 
+Make a faster version of `kwtest()` that only computes the Kruskal-Wallis  **test statistic** when the input is a numeric variable `x` and a variable `g` which gives the group membership. You can try simplifying the function above or by coding from the mathematical definition (see https://en.wikipedia.org/wiki/Kruskal%E2%80%93Wallis_one-way_analysis_of_variance). This function should also perform some checks to ensure the correctness of the inputs (use `kwtest()` as inspiration).
+
+## d. 
+Consider the following scenario. You have samples available from multiple experiments $m=1000$ where you collect the numerical values for the quantity of interest `x` and the group membership for $n$ individuals. The first $20$ individuals in each sample belong to group 1, the following $20$ individuals in each sample belong to group 2, the last $10$ individuals in each sample belong to group 3. Use the following code to simulate such a data structure:
+```{r}
+set.seed(1234)
+m <- 1000 # number of repetitions
+n <- 50   # number of individuals
+X <- matrix(rt(m * n, df = 10), nrow = m)
+grp <- rep(1:3, c(20, 20, 10))
+```
+  Write a function which performs the Kruskal-Wallis test using the function             `stats:::kruskal.test.default()` for $m$ repeated experiments and returns a vector of $m$ test statistics. The input of this function are a matrix `X` with $m$ rows and $n$ columns and a vector `g` which gives the grouping. 
+
+
+## e. 
+Write a function which performs the Kruskal-Wallis test using the function in point c. for $m$ repeated experiments and returns a vector of $m$ test statistics.
+The input of this function are a matrix `X` with $m$ rows and $n$ columns and a vector `g` which gives the grouping. 
+
+## f. 
+Compare the performance of the two approaches using a benchmarking package on the data generated above. Comment on the results.
+
+## g. 
+Now consider vectorizing the function in point c. Compare this approach to the other two.
+Comment on the results.
+
