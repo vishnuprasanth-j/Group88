@@ -62,8 +62,11 @@ fibonacci_ratio_while <- function(n) {
   return(ratios)
 }
 ```
+
+
 ## b. 
 Benchmark the two functions for $n=200$ and $n=2000$ (you can use package **microbenchmark** or package **bench** for this purpose). Which function is faster?
+
 ```{r}
 library(microbenchmark)
 
@@ -85,22 +88,28 @@ benchmark_2000 <- microbenchmark(
 
 print(benchmark_2000)
 ```
-Based on the benchmarking results, the for loop implementation is slightly faster than the while loop, which kinda makes sense because in a while loop, the condition must be evaluated before every iteration, accumulating a slight overhad.
+**Answer**: Based on the benchmarking results shown above, one can conclude that the for loop implementation is slightly faster than the one using the while loop. This makes sense because a while loop needs to evaluate the condition before every iteration, which introduces a slight overhead that accumulates over each iteration.
+
 
 ## c.
 Plot the sequence for  $n=100$. 
 For which $n$ does it start to stabilize to a value?
 What number does the sequence converge to?
 
-
 ```{r}
-ratios <- fibonacci_ratio_for(100)
+# compute ratios for n=100
+ratios_100 <- fibonacci_ratio_for(100)
 
-plot(1:100, ratios, type = "l",
+# plot ratios
+plot(ratios_100, type = "l",
      xlab = "i", ylab = expression(r[i]),
      main = "Ratio of consecutive Fibonacci numbers")
+
+# mark convergence
 abline(h = (1 + sqrt(5)) / 2, col = "red", lty = 2)
 ```
+**Answer**: From the plot, one can see that the ratios stabilize at an $i$ value of about 10. The series converges to a value of $\approx 1.618034$ or $\approx 1.618034$ or $\frac{1 + \sqrt{5}}{2}$. This value is famously known as the golden ratio, and it is also a well-known fact that the ratios of the Fibonacci numbers converge to it.
+
 
 
 # 2. Gamma function (1 point)
@@ -116,38 +125,42 @@ $$
 rho <- function(n) {
   gamma((n - 1) / 2) / (gamma(1 / 2) * gamma((n - 2) / 2))
 }
-rho(346)
 ```
 
-## b. 
 
+## b. 
 Try $n = 2000$. What do you observe? Why do you think the observed behavior happens?
 ```{r}
 rho(2000)
 ```
-We get NaN , it could be because the function is being calculated with a high value. After a few trials with lower values, I observed that anything over 345 produces NaN.If we split up the denominator and numerator and calculate them individually, we receive the following:
+
+**Answer**: We get `NaN`. The reason could be that the function is evaluated with a very large value. After a few experiments with lower values, we observed that anything above 345 produces `NaN`. If we split up the denominator and numerator and calculate them individually, we obtain the following:
 
 ```{r formula individual, echo=TRUE}
 n_calculation_numerator <- function(n){
- result <- (gamma((n - 1)/2))
+  result <- (gamma((n - 1)/2))
   print(result)
 }
 
 n_calculation_denominator <- function(n){
- result <- (gamma(1/2) * gamma((n-2)/2))
+  result <- (gamma(1/2) * gamma((n-2)/2))
   print(result)
 }
+
 cat("Numerator result for n = 2000: \n")
 n_calculation_numerator(2000)
 cat("Denominator result for n = 2000: \n")
 n_calculation_denominator(2000)
 ```
-Both the numerator and denominator individually return Inf for n=2000. R cannot divide infinite values by one another, which is why the final result is NaN
+
+Both the numerator and denominator individually return `Inf` for n=2000. The Gamma function grows extremely fast (faster than exponential). Even for moderately large inputs it produces astronomically large numbers. These numbers are so large that they cannot be properly represented by floating-point numbers and R therefore returns `Inf`. Since R cannot divide infinite values by one another and `Inf / Inf` is in general a indeterminate form, the final result is `NaN`.
+
 
 ## c.
 Write an implementation which can also deal with large values of $n>1000$. 
 
-The solution to this problem is to handle large values using a log scale. We shrink the values by applying a logarithm and then exponentiate the result to convert it back to the normal scale. For this purpose, we use lgamma(). (ref: https://stackoverflow.com/questions/42821156/how-to-overcome-the-gamma-function-limitation-in-r).  
+**Answer**: The solution to this problem is to handle large values using a log scale. Instead of computing the Gamma function on the standard scale, we compute its logarithm using `lgamma()`. This allows us to avoid computing the extremely large intermediate Gamma values and therefore prevents numerical overflow. After computing the expression on the log scale, we exponentiate the final result to convert it back to the original scale. (ref: https://stackoverflow.com/questions/42821156/how-to-overcome-the-gamma-function-limitation-in-r)
+
 ```{r log calculation, echo=TRUE}
 rho_stable <- function(n) {
   exp(lgamma((n - 1) / 2) - lgamma(1 / 2) - lgamma((n - 2) / 2))
@@ -158,7 +171,6 @@ rho_stable(2000)
 
 ## d. 
 Plot $\rho_n/\sqrt{n}$ for different values of $n$. Can you guess the limit of $\rho_n/\sqrt{n}$ for $n \rightarrow\infty$?
-
 
 ```{r}
 n_vals <- seq(3, 2000, by = 10)
@@ -177,7 +189,8 @@ plot(n_vals, rho_vals / sqrt(n_vals), type = "l",
      main = expression(rho[n] / sqrt(n) ~ "as n increases"))
 
 ```
-Plotting the ratio for increasing values of $n$ shows that the curve approaches approximately $0.4$. For smaller ranges of $n$, the convergence toward this value appears slower. Based on the behavior for larger $n$, it is reasonable to guess that the limit as $n \to \infty$ is about $0.4$.
+**Answer**: Plotting the ratio for increasing values of $n$ shows that the curve approaches approximately $0.4$. For smaller ranges of $n$, the convergence toward this value appears slower. Based on the behavior for larger $n$, it is reasonable to guess that the limit as $n \to \infty$ is about $0.4$.
+
 
 
 # 3. Weak law of large numbers (1.5 points)
@@ -210,8 +223,10 @@ plot(1:n, running_mean, type = "l",
      ylim = c(1, 6))
 abline(h = 3.5, col = "red", lty = 2)
 ```
-   As the number of rolls increases, the running average converges towards the expected value of 3.5. This illustrates the weak law of large numbers, with more observations, our sample mean gets closer to the true population mean.
-   
+
+**Answer**: As the number of rolls increases, the running average converges towards the expected value of 3.5. This illustrates the weak law of large numbers, with more observations, our sample mean gets closer to the true population mean.
+
+
 ## b. 
 - Replicate the die-rolling experiment 
  $M=50$ times using a for loop. 
@@ -221,7 +236,6 @@ paths which you can plot against the number of rolls.
 - Plot all 50 paths on the same graph to observe the variation in the running averages.
 
 ```{r}
-
 M <- 50
 n <- 10000
 paths <- matrix(NA, nrow = M, ncol = n)
@@ -243,20 +257,22 @@ for (m in 2:M) {
 
 abline(h = 3.5, col = "red", lty = 2)
 ```
-We  can see that all paths start with high variability but converge towards the expected value of 3.5 as the number of rolls increases. Some paths approach the expected value from above, others from below, but they all tend to get closer to 3.5 as n increases.
+
+**Answer**: We can see that all paths start with high variability but converge towards the expected value of 3.5 as the number of rolls increases. Some paths approach the expected value from above, others from below, but they all tend to get closer to 3.5 as $n$ increases.
+
 
 ## c.
 What is the theoretical expected value of a fair 6-sided die?
 
 
-For a fair 6-sided die, the possible outcomes are $\{1, 2, 3, 4, 5, 6\}$, each with probability $\frac{1}{6}$.
+**Answer**: For a fair 6-sided die, the possible outcomes (sample space) are $\{1, 2, 3, 4, 5, 6\}$, each with probability $\frac{1}{6}$. The theoretical expected value is:
+$$
+E(X) = \sum_{i=1}^{6} i \cdot P(X = i) = \sum_{i=1}^{6} i \cdot \frac{1}{6} = \frac{1 + 2 + 3 + 4 + 5 + 6}{6} = \frac{21}{6} = 3.5
+$$
 
-The theoretical expected value is:
 
-$$E(X) = \sum_{i=1}^{6} i \cdot P(X = i) = \sum_{i=1}^{6} i \cdot \frac{1}{6} = \frac{1 + 2 + 3 + 4 + 5 + 6}{6} = \frac{21}{6} = 3.5$$
 ## d. 
 Comment on how the running mean of the paths behaves relative to the expected value  as $n$ increases.
-
 
 ```{r}
 abs_diff <- abs(paths - 3.5)
@@ -267,8 +283,8 @@ plot(1:ncol(paths), mean_abs_diff, type = "l",
      main = "Convergence to Expected Value")
 ```
 
+**Answer**: As the number of observations $n$ grows, the average absolute difference between the running mean and the expected value becomes smaller. This behavior is consistent with the weak law of large numbers. At the start, when only a few observations are available, the running mean fluctuates quite a lot because of the randomness in small samples. However, as more die rolls are added, the overall behavior becomes more predictable and centers around the expected value of 3.5.
 
-As the number of observations $n$ grows, the average absolute difference between the running mean and the expected value becomes smaller. This behavior agrees with the weak law of large numbers.At the beginning, when only a few observations are available, the running mean fluctuates quite a lot because of the randomness in small samples. However, as more die rolls are added, the aggregate behavior becomes more predictable  and centers around the expected value of 3.5.
 
 ## e. 
 
@@ -304,16 +320,20 @@ while (proportion_outside >= 0.05) {
     } else {
       prev_sum <- running_averages[m, n_current - batch] * (n_current - batch)
       new_sums <- prev_sum + cumsum(new_rolls)
-      running_averages[m, (n_current - batch + 1):n_current] <- new_sums / ((n_current - batch + 1):n_current)
+      running_averages[m, (n_current - batch + 1):n_current] <-
+        new_sums / ((n_current - batch + 1):n_current)
     }
   }
   
   proportion_outside <- mean(abs(running_averages[, n_current] - 3.5) > epsilon)
 }
 
-cat("The loop terminated at n =", n_current, "with proportion outside epsilon =", proportion_outside, "\n")
+cat("The loop terminated at n =", n_current,
+    "with proportion outside epsilon =", proportion_outside, "\n")
 ```
-   The loop terminated at $n = 101900$. At this point, fewer than 5% of the replications have a running mean that differs from the expected value (3.5) by more than $\epsilon = 0.01$, meaning that about 95% of the running means lie within this interval.
+
+**Answer**: The loop terminated at $n = 101900$. At this point, fewer than 5% of all replications have a running mean that differs from the expected value (3.5) by more than $\epsilon = 0.01$, meaning that about 95% of all running means lie within this interval.
+
 
 ## f. 
 
@@ -349,12 +369,16 @@ plot(1:n, paths_cauchy[1, ], type = "l", col = rgb(0,0,1,0.3),
      ylim = c(-3, 3),
      xlab = "n", ylab = "Running mean",
      main = "Running mean - Cauchy (zoomed)")
+
 for (m in 2:M) {
   lines(1:n, paths_cauchy[m, ], col = rgb(0,0,1,0.3))
 }
 abline(h = 0, col = "red", lty = 2)
 ```
-       The weak Law of Large Numbers does not seem to hold for the Cauchy distribution.its because the the distribution has heavier tails, those extremme values  influence the running mean, and since the Cauchy distribution has no finite expected value, the sample mean does not stabilize as the sample size increases.
+
+**Answer**: The weak Law of Large Numbers does not seem to hold for the Cauchy distribution. This is because the distribution has heavier tails. Those extreme values influence the running mean and since the Cauchy distribution has no finite expected value, the sample mean does not stabilize as the sample size increases.
+
+
 
 # 4. Central limit theorem (1.5 points)
 
@@ -373,7 +397,7 @@ converges to the standard normal CDF as $n\rightarrow\infty$.
 Derive the expected value of the sample mean $\bar X_n=\frac{X_1+X_2+\ldots+X_n}{n}$.
  
 
-Placing $\bar{X}_n$ inside the expectation operator and applying linearity, we get:
+**Answer**: Placing $\bar{X}_n$ inside the expectation operator and applying linearity, we get:
 $$E(\bar{X}_n) = E\left(\frac{X_1 + X_2 + \cdots + X_n}{n}\right) = \frac{1}{n}\Big[E(X_1) + E(X_2) + \cdots + E(X_n)\Big]$$
 Since all $X_i$ are independently and identically distributed, they share the same mean $E(X_i) = \mu$. Substituting:
 $$E(\bar{X}_n) = \frac{1}{n}(\mu + \mu + \cdots + \mu) = \frac{n\mu}{n} = \mu$$
@@ -383,7 +407,7 @@ Thus $E(\bar{X}_n) = \mu$, meaning the expected value of the sample mean equals 
 ## b. 
 Derive the variance of the sample mean $\bar X_n=\frac{X_1+X_2+\ldots+X_n}{n}$.
 
-Since the sample mean is defined as $\bar{X}_n = \frac{X_1 + X_2 + \ldots + X_n}{n}$, we start with:
+**Answer**: Since the sample mean is defined as $\bar{X}_n = \frac{X_1 + X_2 + \ldots + X_n}{n}$, we start with:
 $$Var(\bar{X}_n) = Var\left(\frac{X_1 + X_2 + \cdots + X_n}{n}\right)$$
 Since the $X_i$ are independent, the variance of their sum equals the sum of their variances. Bringing $\frac{1}{n}$ out of the variance operator (where it gets squared to $\frac{1}{n^2}$):
 $$Var(\bar{X}_n) = \frac{1}{n^2} \Big[Var(X_1) + Var(X_2) + \cdots + Var(X_n)\Big]$$
@@ -427,11 +451,12 @@ for (n in n_vals) {
 }
 ```
 
- The variance is highest for $n = 100$ and lowest for $n = 10000$. For a fair die, the true mean is $\mu = 3.5$, and as $n$ increases, the sample means spread less around this value.
+**Answer**: The variance is highest for $n = 100$ and lowest for $n = 10000$. For a fair die, the true mean is $\mu = 3.5$, and as $n$ increases, the sample means spread less around this value.
 
 For $n = 100$, the histogram shows a rough bell shape, still with some irregularity. With $n = 1000$, the distribution becomes smoother and more symmetric. For $n = 10000$, the distribution of sample means closely matches a normal bell shaped curve.
 
 This is consistent with the Central Limit Theorem. As $n$ increases, the distribution of the sample mean becomes increasingly normal and more values concentrate around $\mu = 3.5$. This holds regardless of underlying distribution.
+
 
 ## d. 
 Compute expected value $\mu$ and the variance  $\sigma^2$ for the random variable $X_i$ (giving the number in die-roll $i$), which follows a discrete uniform distribution.
@@ -443,6 +468,7 @@ cat("Calculated mean: ", mu, "\n")
 variance <- ((1^2 + 2^2 + 3^2 + 4^2 + 5^2 + 6^2)/6) - mu^2
 cat("Calculated variance: ", variance, "\n")
 ```
+
 
 ## e.
 Now that you computed $\mu$ and $\sigma^2$, 
@@ -460,9 +486,7 @@ changes as  $n$  and  $M$ increase.
 Comment on whether the distributions of 
 $Z_n$ appear to approach a normal distribution, illustrating the Central Limit Theorem.
 
-
 ```{r}
-
 set.seed(44)
 mu <- 3.5
 sigma2 <- 35/12
@@ -484,6 +508,8 @@ for (n in n_vals) {
 }
 par(mfrow = c(1, 1))
 ```
+
+
     
 # 5. Readable and efficient code (1 points)
 
@@ -492,10 +518,10 @@ Read over the code below.
 ## a. 
 Explain (in text) what the code does.
 
+**Answer**
+
 **(i)** In the first code block, two vectors, x and z, are initialized with 100 observations each from a normal distribution. Even though the variables are uncorrelated, a linear model of x on z is fitted. The residuals from this model are then transformed using the sine function, a small offset is added, and the result is used to update x before fitting the model again. This procedure is repeated four times.
 To ensure that x does not become too small during the iterations, a threshold is checked in each step. Finally, the modified vector x is returned.
-
-
 
 **(ii)** In the second code block, two variables are again initialized with values from a normal distribution. In this case, however, the variables are correlated. The code then evaluates a linear model of y on x using 4-fold cross-validation. First, the model is fitted using all observations except the first 250. Predictions are then made for these excluded observations, and the RMSE is calculated. This process is repeated three more times, each time leaving out a different block of 250 observations so that every data point serves once as part of the test set.
 
@@ -503,7 +529,9 @@ To ensure that x does not become too small during the iterations, a threshold is
 ## b.
 Explain (in text) what you would change to make the code more readable.
 
-Both code blocks  violate the DRY principle,large parts are repetitive and could be replaced by a loop. In particular, we could use a loop for the residual computation and fitting process in (i) and for the train-predict evaluate procedure in (ii). In the loops, hard coded values could be replaced with descriptively named variables, e.g. threshold. Descriptions can then be provided at initialization and where they are updated
+**Answer**: Both code blocks violate the DRY principle,large parts are repeated and could be replaced by a loop. In particular, we could use a loop for the residual computation and fitting process in (i) and for the train-predict evaluate procedure in (ii). In the loops, hard coded values could be replaced with descriptively named variables, e.g. threshold. Descriptions can then be provided at initialization and where they are updated.
+
+
 ## c.
 Change the code according to b. and wrap it in a function. This function should have at most 10 lines (without adding commands to more lines such as `x <- 1; y <- 2`. Such commands will count as 2 lines!). Check that the function called on the same input outputs the same as the provided code.
 
@@ -532,6 +560,7 @@ cross_validate <- function() {
   r
 }
 ```
+
 
 
 # 6. Measuring and improving performance (2 points)
