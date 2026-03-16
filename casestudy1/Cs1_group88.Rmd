@@ -612,11 +612,155 @@ kwtest <- function (x, g, ...)
 ## a. 
 Write a pseudo code outlining what the function does.
 
+**Answer**
+```
+kwtest <- function (x, g, ...) {
+  if (x is a list) {
+    if (x contains less than 2 elements)
+      abort with message "'x' must be a list with at least 2 elements"
+
+    if (argument g is missing)
+      display warning "'x' is a list, so ignoring argument 'g'"
+
+    if (x has non-numeric elements (elements that are not numbers))
+      display warning "some elements of 'x' are not numeric and will be coerced to numeric"
+
+    k <- length(x)
+    l <- lengths(x)
+
+    if (l contains zeros)
+      abort with message "all groups must contain data"
+
+    g <- create empty list
+    for i from 1 to k
+      repeat value i exactly l[i] times
+      append these values to g
+    convert g to a categorical variable (factor)
+
+    x <- flatten list x into a single vector
+  }
+  else
+  {
+    if (length of x is not equal to length of g)
+      abort with message "'x' and 'g' must have the same length"
+
+    convert g to a categorical variable (factor)
+
+    k <- number of distinct levels in g
+
+    if (k is less than 2)
+      abort with message "all observations are in the same group"
+  }
+
+  n <- get number of elements in x
+  if (n is less than 2)
+    abort with message "not enough observations"
+
+  r <- assign ranks for each element of x
+        (basically assign an order without sorting)
+  TIES <- count the frequency of each unique value in x
+
+  for each group in g:
+    compute the sum of ranks within that group
+    divide that squared sum by the group size
+  STATISTIC <- sum of all those values
+
+  STATISTIC <- (12 * STATISTIC / (n * (n + 1)) - 3 * (n + 1)) /
+               (1 - sum(TIES^3 - TIES) / (n^3 - n))
+
+  PARAMETER <- k - 1
+
+  PVAL <- upper-tail probability of the chi-squared distribution
+          at value STATISTIC with PARAMETER degrees of freedom
+
+  label STATISTIC as "Kruskal-Wallis chi-squared"
+  label PARAMETER as "df"
+
+  return a list containing:
+    - statistic = STATISTIC
+    - parameter = PARAMETER
+    - p.value   = PVAL
+    - method    = "Kruskal-Wallis rank sum test"
+}
+```
+
+
 ## b. 
 For example data, call the function in two ways: once using `x` as a list and once using `x` as a vector with a corresponding `g` argument. Ensure that the two different function calls return the same thing by aligning the inputs.
 
+```{r}
+# x as list
+x_list <- list(
+  group1 = c(15, 3, 9),
+  group2 = c(7, 2, 10),
+  group3 = c(1, 8, 4)
+)
+
+result_list <- kwtest(x = x_list)
+
+
+# x as vector with G
+x_vec <- unlist(x_list)
+g_vec <- factor(rep(seq_along(x_list), lengths(x_list)))
+
+result_vec <- kwtest(x = x_vec, g = g_vec)
+
+
+# Compare results
+cat("--- RESULTS LIST ---\n")
+print(result_list)
+
+cat("--- RESULTS VECTOR ---\n")
+print(result_vec)
+```
+
+
 ## c. 
 Make a faster version of `kwtest()` that only computes the Kruskal-Wallis  **test statistic** when the input is a numeric variable `x` and a variable `g` which gives the group membership. You can try simplifying the function above or by coding from the mathematical definition (see https://en.wikipedia.org/wiki/Kruskal%E2%80%93Wallis_one-way_analysis_of_variance). This function should also perform some checks to ensure the correctness of the inputs (use `kwtest()` as inspiration).
+
+```{r}
+kwtest_better <- function(x, g) {
+  if (!is.numeric(x))
+    stop("'x' must be numeric")
+  if (length(x) != length(g))
+    stop("'x' and 'g' must have the same length")
+
+  g <- factor(g)
+  k <- nlevels(g)
+  if (k < 2L)
+    stop("all observations are in the same group")
+
+  n <- length(x)
+  if (n < 2L)
+    stop("not enough observations")
+
+  r  <- rank(x)
+  ni <- tabulate(g)
+  Ri <- vapply(split(r, g), sum, numeric(1))
+
+  H <- (12 / (n * (n + 1))) * sum(Ri^2 / ni) - 3 * (n + 1)
+
+  ti <- tabulate(match(x, sort(unique(x))))
+  H  <- H / (1 - sum(ti^3 - ti) / (n^3 - n))
+
+  PARAMETER <- k - 1L
+  PVAL      <- pchisq(H, PARAMETER, lower.tail = FALSE)
+
+  names(H)         <- "Kruskal-Wallis chi-squared"
+  names(PARAMETER) <- "df"
+
+  list(
+    statistic = H,
+    parameter = PARAMETER,
+    p.value   = PVAL,
+    method    = "Kruskal-Wallis rank sum test"
+  )
+}
+
+# test our new function
+kwtest_better(x_vec, g_vec)
+```
+
 
 ## d. 
 Consider the following scenario. You have samples available from multiple experiments $m=1000$ where you collect the numerical values for the quantity of interest `x` and the group membership for $n$ individuals. The first $20$ individuals in each sample belong to group 1, the following $20$ individuals in each sample belong to group 2, the last $10$ individuals in each sample belong to group 3. Use the following code to simulate such a data structure:
@@ -627,17 +771,99 @@ n <- 50   # number of individuals
 X <- matrix(rt(m * n, df = 10), nrow = m)
 grp <- rep(1:3, c(20, 20, 10))
 ```
-  Write a function which performs the Kruskal-Wallis test using the function             `stats:::kruskal.test.default()` for $m$ repeated experiments and returns a vector of $m$ test statistics. The input of this function are a matrix `X` with $m$ rows and $n$ columns and a vector `g` which gives the grouping. 
+  Write a function which performs the Kruskal-Wallis test using the function             `stats:::kruskal.test.default()` for $m$ repeated experiments and returns a vector of $m$ test statistics. The input of this function are a matrix `X` with $m$ rows and $n$ columns and a vector `g` which gives the grouping.
+
+
+```{r}
+kwtest_bulk <- function(X, g) {
+  apply(X, 1, function(x) {
+    stats:::kruskal.test.default(x, g)$statistic
+  })
+}
+
+# Run
+H <- kwtest_bulk(X, grp)
+head(H)
+```
 
 
 ## e. 
 Write a function which performs the Kruskal-Wallis test using the function in point c. for $m$ repeated experiments and returns a vector of $m$ test statistics.
 The input of this function are a matrix `X` with $m$ rows and $n$ columns and a vector `g` which gives the grouping. 
 
+```{r}
+kwtest_bulk_2 <- function(X, g) {
+  apply(X, 1, function(x) {
+    kwtest_better(x, g)$statistic
+  })
+}
+
+# Run
+H <- kwtest_bulk_2(X, grp)
+head(H)
+```
+
+
 ## f. 
 Compare the performance of the two approaches using a benchmarking package on the data generated above. Comment on the results.
+
+```{r}
+# Benchmark kwtest
+benchmark_kwtest <- microbenchmark(
+  kwtest_bulk_lib = kwtest_bulk(X, grp),
+  kwtest_bulk_custom = kwtest_bulk_2(X, grp),
+  times = 20
+)
+
+print(benchmark_kwtest)
+```
+
+**Answer**: It appears that the function that uses the library is about three times slower than our custom version. This is quite unexpected because one would expect functions that are implemented directly in R’s standard library to have greater performance. However, it could also be that the library function includes additional logic that our custom function is missing, making it more robust and better suited for functionality that will probably be used by thousands of people worldwide.
+
 
 ## g. 
 Now consider vectorizing the function in point c. Compare this approach to the other two.
 Comment on the results.
 
+```{R}
+kwtest_vectorized <- function(X, g) {
+  m <- nrow(X)
+  n <- ncol(X)
+  g <- factor(g)
+  k <- nlevels(g)
+  ni <- tabulate(g)
+
+  # Rank all rows at once: m x n matrix
+  R <- t(apply(X, 1, rank))
+
+  # Group indicator matrix: n x k (one column per group)
+  G <- model.matrix(~ g - 1)
+
+  # Rank sums per group per experiment: m x k
+  # Each row of R %*% G gives the k rank sums for that experiment
+  Ri <- R %*% G
+
+  # H statistic (vectorized over all m experiments)
+  H <- (12 / (n * (n + 1))) * drop(Ri^2 %*% (1 / ni)) - 3 * (n + 1)
+
+  # Tie correction (per row — hard to avoid apply here)
+  tie_corr <- apply(X, 1, function(x) {
+    ti <- tabulate(match(x, sort(unique(x))))
+    sum(ti^3 - ti) / (n^3 - n)
+  })
+
+  H / (1 - tie_corr)
+}
+
+
+benchmark_kwtest_with_vec <- microbenchmark(
+  kwtest_bulk_lib         = kwtest_bulk(X, grp),
+  kwtest_bulk_custom      = kwtest_bulk_2(X, grp),
+  kwtest_bulk_vectorized  = kwtest_vectorized(X, grp),
+  times = 20L
+)
+
+print(benchmark_kwtest_with_vec)
+```
+
+**Answer**: As expected the vectorized is much faster than our currently best approach. It is about double as fast as the second best approach.
