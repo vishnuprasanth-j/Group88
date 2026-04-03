@@ -108,7 +108,7 @@ plot(ratios_100, type = "l",
 # mark convergence
 abline(h = (1 + sqrt(5)) / 2, col = "red", lty = 2)
 ```
-**Answer**: From the plot, one can see that the ratios stabilize at an $i$ value of about 10. The series converges to a value of $\approx 1.618034$ or $\approx 1.618034$ or $\frac{1 + \sqrt{5}}{2}$. This value is famously known as the golden ratio, and it is also a well-known fact that the ratios of the Fibonacci numbers converge to it.
+**Answer**: From the plot, one can see that the ratios stabilize at an $i$ value of about 10. The series converges to a value of $\approx 1.618034$ or $\frac{1 + \sqrt{5}}{2}$. This value is famously known as the golden ratio, and it is also a well-known fact that the ratios of the Fibonacci numbers converge to it.
 
 
 
@@ -508,7 +508,7 @@ for (n in n_vals) {
 }
 par(mfrow = c(1, 1))
 ```
-
+**Answer:** As both $n$ and $M$ increase, the distribution of $Z_n$ becomes progressively smoother and more perfectly aligned with the standard normal distribution (the red curve). While $n$ guarantees that the underlying distribution of the sample mean converges to normality (Central Limit Theorem), a higher $M$ ensures we have enough replications (smoothness) to visually confirm this empirical distribution matching a true normal curve.
 
     
 # 5. Readable and efficient code (1 points)
@@ -518,7 +518,7 @@ Read over the code below.
 ## a. 
 Explain (in text) what the code does.
 
-**Answer**
+**Answer:**
 
 **(i)** In the first code block, two vectors, x and z, are initialized with 100 observations each from a normal distribution. Even though the variables are uncorrelated, a linear model of x on z is fitted. The residuals from this model are then transformed using the sine function, a small offset is added, and the result is used to update x before fitting the model again. This procedure is repeated four times.
 To ensure that x does not become too small during the iterations, a threshold is checked in each step. Finally, the modified vector x is returned.
@@ -612,7 +612,7 @@ kwtest <- function (x, g, ...)
 ## a. 
 Write a pseudo code outlining what the function does.
 
-**Answer**
+**Answer:**
 ```
 kwtest <- function (x, g, ...) {
   if (x is a list) {
