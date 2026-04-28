@@ -39,6 +39,14 @@ The CIA World Factbook provides intelligence on various aspects of 266 world ent
 
 The data was sourced from the [CIA World Factbook Archives](https://www.cia.gov/the-world-factbook/about/archives/). You are required to use `dplyr` for data manipulation, while any package can be used for importing data.
 
+**Setup**
+```{r}
+library(readr)
+library(dplyr)
+library(stringr)
+library(readxl)
+```
+
 # Tasks:
 
 ## a. Data Import and Cleaning
@@ -53,6 +61,50 @@ Load the following datasets from TUWEL and ensure that missing values are handle
   * `rawdata_347.txt`  which contains (estimated) net migration rate per country.
 
 
+**Answer**
+First of all we want to read all the data. According to the task each data set should ultimately contain only two columns: `country` and the respective measured variable, so the rank and the year of the last update are dropped during import.
+
+```{r, message=FALSE}
+# read data
+raw_data_347 <- read_fwf(
+  "rawdata_347.txt",
+  col_positions = fwf_widths(c(8, 60, 10, 17),
+                             c("rank", "country", "mig_rate", "year")),
+  skip = 2,
+  na = c("", "NA", "N/A")
+) %>%
+  select(country, mig_rate)
+
+raw_data_369 <- read_fwf(
+  "rawdata_369.txt",
+  col_positions = fwf_widths(c(8, 60, 10, 12),
+                             c("rank", "country", "edu_exp", "year")),
+  skip = 2,
+  na = c("", "NA", "N/A")
+) %>%
+  select(country, edu_exp)
+
+raw_data_373 <- read_csv("rawdata_373.csv") %>%
+  rename(country = country_name,
+         youth_unempl_rate = youth_unempl_rate)
+
+# show structure of read data
+str(raw_data_347)
+str(raw_data_369)
+str(raw_data_373)
+```
+
+The two `.txt` files were parsed with `read_fwf()` from the `readr` package, which can be used to parse fixed-width-files. To do this properly we have to pass the widths of the columns in our files to `read_fwf`. Because the first two rows in our files don't contain any relevant data we use the `skip` parameter to avoid parsing them. The `.csv` file was read with `read_csv()`. Country names in that file contain a long block of trailing whitespaces, which can be safely dropped. This is being handled automatically because the parameter `trim_ws`, which tells our function to trim all leading and trailing whitespaces before parsing, is set to `TRUE` by default. In all three data sets we rename the country column to `country` so that the merging step in part b can use a single, common key.
+
+```{r}
+# check for missing values
+cat("raw_data_347 contains", sum(is.na(raw_data_347)), "missing values.\n")
+cat("raw_data_369 contains", sum(is.na(raw_data_369)), "missing values.\n")
+cat("raw_data_373 contains", sum(is.na(raw_data_373)), "missing values.\n")
+```
+
+After the import none of the three tibbles contains missing values, so no further NA handling is required at this point. (Missing values will appear naturally in part b when we take the union of all countries through a full join.)
+
 
 
 
@@ -63,6 +115,26 @@ Merge the datasets using `dplyr` on a unique key and retain the union of all obs
 - What key are you using for merging?
 - Return the dimensions of the merged dataset.
 
+**Answer**
+
+The only variable that appears in all three raw data sets is the country name, so it is the natural choice for merging. To retain the union of all observations (i.e. every country that appears in at least one of the three files) we use `full_join()`.
+
+```{r}
+# merge data
+merged_data <- raw_data_347 %>%
+  full_join(raw_data_369, by = "country") %>%
+  full_join(raw_data_373, by = "country")
+
+# show data, it's structure and dimensions
+merged_data
+str(merged_data)
+dim(merged_data)
+
+# count NA values
+apply(is.na(merged_data), MARGIN=2, FUN=sum)
+```
+
+The merged dataset has `r nrow(merged_data)` rows (countries) and `r ncol(merged_data)` columns: the country name plus the three measured variables. Countries that are missing from one of the original files now have `NA` for the corresponding variable. For now this is fine, but one has to keep this fact in mind when doing later analyses.
 
 
 
@@ -75,6 +147,83 @@ Obtain country income classification (low, lower-middle, upper-middle, high) fro
 
 - Since ISO codes are standardized, download and use the [CIA country data codes](https://www.cia.gov/the-world-factbook/references/country-data-codes/) for merging. Make sure you are not losing any of the countries in your original data set when merging.
 
+
+**Answer**
+
+The only variable shared between our merged CIA data set and the World Bank income classification is the country name. In principle this column could be used as a merge key, but in practice it is not reliable: the two sources use slightly different spellings and conventions for several countries (for example *Macedonia* vs. *North Macedonia*, *Turkey* vs. *Turkey (Turkiye)* etc.). A name-based join would silently drop every such country. Standardised ISO-3 codes do not have this problem, so we use the CIA *Country Data Codes* file to attach a `GENC` (ISO-3) code to every country in our data and then merge the World Bank classification on that code.
+
+```{r, message=FALSE}
+# read country codes from .csv
+country_codes <- read_csv("Country Data Codes.csv") %>%
+  select(Name, GENC)
+```
+
+Before joining we have to make the country names in `merged_data` agree with those in the codes table. A quick anti-join shows which names cannot be matched directly:
+
+```{r}
+# check if there are some mismatches
+merged_data %>%
+  anti_join(country_codes, by = c("country" = "Name")) %>%
+  pull(country)
+```
+
+Only two countries are affected: *Macedonia* and *Turkey*. After looking them up manually in `country_codes.csv` we found out that this is simple name mismatch. *Macedonia* is called *North Macedonia* in the codes file and *Turkey* is called *Turkey (Turkiye)*. We rename them so that no country is lost in the join.
+
+```{r}
+# rename Macedonia and Turkey
+merged_data <- merged_data %>%
+  mutate(country = recode(country,
+                          "Macedonia" = "North Macedonia",
+                          "Turkey"    = "Turkey (Turkiye)"))
+
+# merge data with country_codes
+merged_data <- merged_data %>%
+  left_join(country_codes, by = c("country" = "Name"))
+
+# check if all countries have a country_code
+stopifnot(all(!is.na(merged_data$GENC)))
+
+# show data, structure and dimensions
+merged_data
+str(merged_data)
+dim(merged_data)
+```
+
+Every country in our data set now carries an ISO-3 code. Next we read the World Bank classification (sheet *List of economies* of the file `CLASS_2025_10_07.xlsx`, which was pulled from the link in the instructions) and keep only the ISO-3 code and the income group. The four income classes are recoded to the short labels `L`, `LM`, `UM`, `H` and stored as an ordered factor so that subsequent tables and plots respect their ordering.
+
+```{r, message=FALSE}
+# read income classification data
+wb_income_class <- read_excel("CLASS_2025_10_07.xlsx",
+                              sheet = "List of economies") %>%
+  select(Code, `Income group`) %>%
+  rename(GENC = Code, income_group = `Income group`) %>%
+  mutate(income_status = recode(income_group,
+                                "Low income"          = "L",
+                                "Lower middle income" = "LM",
+                                "Upper middle income" = "UM",
+                                "High income"         = "H"),
+         income_status = factor(income_status,
+                                levels = c("L", "LM", "UM", "H"),
+                                ordered = TRUE)) %>%
+  select(GENC, income_status)
+
+# merge incomeclass with our data using country codes
+merged_data <- merged_data %>%
+  left_join(wb_income_class, by = "GENC")
+
+# show data, structure and dimensions
+merged_data
+str(merged_data)
+dim(merged_data)
+```
+
+The use of `left_join()` guarantees that no country from the original data set is dropped. For some countries the World Bank has no classification (a handful of small territories such as *Anguilla* or *Kosovo*) keep `NA` in the new `income_status` column:
+
+```{r}
+merged_data %>%
+  filter(is.na(income_status)) %>%
+  pull(country)
+```
 
 
 
