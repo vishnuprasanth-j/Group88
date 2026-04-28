@@ -16,16 +16,16 @@ knitr::opts_chunk$set(echo = TRUE)
 \begin{table}[ht]
 \centering
 \caption{You can use and extend this table to specify your AI usage (if used at all).}
-\begin{tabular}{l|rrr}
+\begin{tabular}{l|rrrr}
 \toprule
-\textbf{AI usage} & \textbf{Task 1} & \textbf{Task 2} &  \ldots \\
+\textbf{AI usage} & \textbf{Task a} & \textbf{Task b} & \textbf{Task c} & \ldots \\
 \midrule
-\textit{Correcting faulty code}   &  no  &  &    \\
-\textit{Improving existing code}   &  little   &  &     \\
-\textit{Generating new code}   &  medium   &  &    \\
-\textit{Layout and formatting}  &  heavy   &  &     \\
-\textit{Text correction}   &    &  &    \\
-\ldots  &    &  &    \\
+\textit{Correcting faulty code}       &  medium   & medium   & medium   &  \ldots \\
+\textit{Improving existing code}      &  no       & no       & no       &  \ldots \\
+\textit{Generating new code}          &  no       & no       & no       &  \ldots \\
+\textit{Layout and formatting}        &  no       & no       & no       &  \ldots \\
+\textit{Text correction and rewording}&  heavy    & heavy    & heavy    &  \ldots \\
+\ldots  & & & & \\
 \bottomrule
 \end{tabular}
 \end{table}
