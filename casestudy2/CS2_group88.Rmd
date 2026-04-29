@@ -235,8 +235,45 @@ Introduce continent and subcontinent (or region) data for each country.
 - Find and download an appropriate online resource.
 - Merge this information into the dataset, naming the final dataset `df_vars`. Make sure you are not losing any of the countries in your original data set when merging.
 
+We found this source <https://unstats.un.org/unsd/methodology/m49/overview/>, which satisfies our need to introduce continent and subcontinent data for each country.
+```{r}
+
+geographical_info <- read.csv(
+  "unsd.csv",
+  header = TRUE,
+  sep = ";"
+)
+
+# removing redundant country column
+geographical_info$Global.Code <- NULL
+geographical_info$Global.Name <- NULL
+geographical_info$Region.Code <- NULL
+geographical_info$Global.Code <- NULL
+geographical_info$Sub.region.Code <- NULL
+geographical_info$Intermediate.Region.Code <- NULL
+geographical_info$Intermediate.Region.Name <- NULL
+geographical_info$Country.or.Area <- NULL
+geographical_info$M49.Code <- NULL
+geographical_info$ISO.alpha2.Code <- NULL
+geographical_info$Least.Developed.Countries..LDC. <- NULL
+geographical_info$Land.Locked.Developing.Countries..LLDC. <- NULL
+geographical_info$Small.Island.Developing.States..SIDS. <- NULL
+
+# renaming columns to have a coherent naming
+colnames(geographical_info) <- c("continent", "subcontinent", "iso-code")
+
+head(geographical_info)
+
+```
 
 
+We are using a left join here so that we don’t lose any countries from the original dataset.
+
+```{r mergig existing data with geographical data, echo=TRUE}
+df_vars <- merged_data %>%
+  left_join(geographical_info, by= c("GENC" = "iso-code"))
+head(df_vars)
+```
 
 
 ## e. Data Tidiness and Summary Statistics
@@ -245,13 +282,89 @@ Introduce continent and subcontinent (or region) data for each country.
 (observational units, variables, fixed vs. measured variables).
 Make adjustments to tidy the data, if necessary.
 
+The dataset currently adheres to the standards of tidy data:
+
+ - Every column represents a single variable, and every row represents a unique observation without duplicates.
+
+ - Fixed variables include: country, GENC, income_status, continent, and subcontinent.
+
+ - Measured variables include: mig_rate, edu_exp, and youth_unempl_rate
+
+
+Overall, the data is already tidy, but a few minor tweaks can be made to improve readability:
+
+  - The GENC column name isn't immediately clear, renaming it to iso_code would be more intuitive.
+  
+  - The columns should be reordered so that all fixed variables are grouped together, followed by the measured variables.
+```{r}
+
+# Rename GENC to iso-code
+df_vars <- df_vars %>% rename(
+    iso_code = GENC
+    )
+
+# sort columns
+df_vars <- df_vars %>%
+  select("country", "iso_code", "income_status", "continent", "subcontinent", "mig_rate", "edu_exp", "youth_unempl_rate")
+
+
+head(df_vars)
+
+```
+
 - Create a frequency table for the income status variable and briefly interpret the results.
+
+The dataset is skewed toward wealthier categories, with over 60% of the observations falling into the Upper Middle and High-Income brackets. Conversely, the Low-Income bracket is underrepresented. This imbalance must be considered when deriving results or drawing conclusions from the data, as it may introduce bias.
+```{r}
+
+    income_freq <- function () {df_vars %>% 
+      count(income_status, name = "n") %>%       
+      mutate(percent = round(100 * n / sum(n), 1)) 
+    }
+    head(income_freq())
+```
 
 - Analyze the distribution of income status across continents by computing absolute and relative frequencies. Comment on the findings.
 
+
+
+
+  We can see a quite expected overall picture of how the income groups are distributed around the world: In Africa, most countries are classified as lower middle or low income countries, however there are a few countries with upper middle income and even one with high income.
+    Europe leads with over 80% high income countries.
+    Asia has many countries in the lower middle field but also some countries with higher income.
+    Oceania has more high income countries (\~43%) but also 28% classified as low middle income.
+
+```{r}
+library(tidyr)
+
+    income_by_continent <- df_vars %>% 
+      group_by(continent, income_status) %>%        
+      summarise(n = n(), .groups = "drop") %>%       
+      group_by(continent) %>%                  
+      mutate(percent = round(100 * n / sum(n), 1)) %>% 
+      ungroup() %>% 
+      arrange(continent, desc(percent))
+    # easier to analyze
+    income_by_continent_wide <- income_by_continent %>%
+      pivot_wider(names_from  = income_status,
+                  values_from = c(n, percent),
+                  values_fill = 0)
+
+    income_by_continent_wide
+
+```
+
+
 - Using the distribution of income status across continents, identify which countries are the only ones in their income group across the continent. Discuss briefly.
 
+Seychelles is the only high-income country in Africa, likely due to its thriving tourism sector
 
+```{r}
+ df_vars %>%
+          filter(continent== "Africa", income_status == "H") %>%
+          select(country)
+
+```
 
 
 
@@ -259,18 +372,155 @@ Make adjustments to tidy the data, if necessary.
 
 - Create a table of average (mean and median) values for expenditure, youth unemployment rate and net migration rate separated into income status. Make sure that in the output, the ordering of the income classes is proper (i.e., L, LM, UM, H or the other way around). Briefly comment the results and any differences between the mean and median. 
 
+
+```{r}
+summary_stats <- df_vars %>%
+      group_by(income_status) %>%
+      summarise(
+        mean_expenditure = mean(edu_exp, na.rm = TRUE),
+        median_expenditure = median(edu_exp, na.rm = TRUE),
+        mean_unemployment = mean(youth_unempl_rate, na.rm = TRUE),
+        median_unemployment = median(youth_unempl_rate, na.rm = TRUE),
+        mean_migration = mean(mig_rate, na.rm = TRUE),
+        median_migration = median(mig_rate, na.rm = TRUE),
+        .groups = "drop"
+      ) %>%
+      arrange(income_status)
+
+    summary_stats
+```
+
+
+Education expenditure steadily increases with country wealth, while high income nations are the only group experiencing net positive migration. Youth unemployment is highest in upper middle income countries. Across most brackets, the mean youth unemployment rate is higher than the median, indicating that a few countries with severe youth unemployment are skewing the averages upwards. Conversely, middle income brackets show means substantially lower than their medians for migration, driven by extreme emigration in a handful of nations.
+
+
+
 - Look at the standard deviation and the interquartile range of the variables per income status instead of the location statistics above. Do you gain additional insights? Briefly comment the results. 
+
+```{r}
+dispersion_stats <- df_vars %>%
+  group_by(income_status) %>%
+  summarise(
+    sd_expenditure = sd(edu_exp, na.rm = TRUE),
+    iqr_expenditure = IQR(edu_exp, na.rm = TRUE),
+    sd_unemployment = sd(youth_unempl_rate, na.rm = TRUE),
+    iqr_unemployment = IQR(youth_unempl_rate, na.rm = TRUE),
+    sd_migration = sd(mig_rate, na.rm = TRUE),
+    iqr_migration = IQR(mig_rate, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(income_status)
+
+dispersion_stats
+
+```
+
+By looking at the spread, we learn that High income countries are generally more uniform in their policies (like education spending), whereas Lower and Middle income brackets are highly volatile, especially regarding migration, where the data is being heavily distorted by a few countries experiencing extreme population movements.
 
 
 - Extend the analysis of the statistics median and IQR  to **each income status and continent combination**. Play around with displaying the resulting table. Use `pivot_longer()` and/or 
 `pivot_wider()` to generate different outputs. 
 Discuss the results as well as the readability of the different tables.
+
+
+```{r}
+# Creating a comprehensive table with median and IQR for each variable by income group and continent
+combined_stats <- df_vars %>%
+  group_by(continent, income_status) %>%
+  summarise(
+    median_expenditure = median(edu_exp, na.rm = TRUE),
+    iqr_expenditure = IQR(edu_exp, na.rm = TRUE),
+    median_unemployment = median(youth_unempl_rate, na.rm = TRUE),
+    iqr_unemployment = IQR(youth_unempl_rate, na.rm = TRUE),
+    median_migration = median(mig_rate, na.rm = TRUE),
+    iqr_migration = IQR(mig_rate, na.rm = TRUE),
+    n_countries = n(),
+    .groups = "drop"
+  ) %>%
+  arrange(continent, income_status)
+
+head(combined_stats)
+
+```
  
+```{r}
+# Format 2: Focus on one variable at a time, income groups as columns
+unemployment_by_continent_income <- combined_stats %>%
+  select(continent, income_status, median_unemployment, iqr_unemployment, n_countries) %>%
+  pivot_wider(
+    id_cols = continent,
+    names_from = income_status,
+    values_from = c(median_unemployment, iqr_unemployment, n_countries),
+    values_fill = NA
+  )
+
+# Display the unemployment focused table
+unemployment_by_continent_income
+```
+
+```{r}
+# Format 3: Focus on continents with variables and income groups nested
+continent_focused <- combined_stats %>%
+  select(-n_countries) %>%
+  pivot_longer(
+    cols = c(median_expenditure, iqr_expenditure, median_unemployment, 
+             iqr_unemployment, median_migration, iqr_migration),
+    names_to = "statistic",
+    values_to = "value"
+  ) %>%
+  mutate(
+    variable = case_when(
+      grepl("expenditure", statistic) ~ "Education Expenditure",
+      grepl("unemployment", statistic) ~ "Youth Unemployment",
+      grepl("migration", statistic) ~ "Net Migration",
+      TRUE ~ NA_character_
+    ),
+    stat_type = ifelse(grepl("median", statistic), "Median", "IQR")
+  ) %>%
+  pivot_wider(
+    id_cols = c(continent, variable, income_status),
+    names_from = stat_type,
+    values_from = value
+  )
+
+# Display the continent-focused table
+head(continent_focused)
+```
+
+
+Breaking the data down by continent reveals wealth disparities. Africa is dominated by lower income nations, whereas Europe consists of upper middle and high income countries. Additionally, youth unemployment trends do not follow a single rule. Unemployment peaks in upper middle income nations in Africa and Europe, but it is highest in low income countries in Asia. In the Americas and Oceania, unemployment peaks in high income nations, highlighting data volatility.
+
+When comparing table readability, the long, nested format (Format 3) is vastly superior for professional reporting. It neatly pairs the median and IQR while keeping the table narrow and visually clean. In contrast, the wide format (Format 2) is difficult to read on a screen or page due to horizontal bloat and a clutter of NA values for non-existent continent-income combinations, though it does remain useful for quick, left-to-right data exploration.
+
 - Identify countries performing well in terms of both **youth unemployment** and **net migration rate** (top 25% in net migration and bottom 25% in youth unemployment within their continent).
 
+```{r}
+
+# Calculate quartiles for each variable within continents
+quartiles <- df_vars %>%
+  group_by(continent) %>%
+  mutate(
+    unemployment_quantile = ntile(youth_unempl_rate, 4),
+    migration_quantile = ntile(mig_rate, 4)
+  ) %>%
+  ungroup()
+
+# Identify countries in bottom 25% for unemployment and top 25% for migration
+well_performing_countries <- quartiles %>%
+  filter(unemployment_quantile == 1, migration_quantile == 4) %>%
+  select(country, continent, youth_unempl_rate, mig_rate, income_status) %>%
+  arrange(continent, country)
+
+# Display the well-performing countries
+well_performing_countries
+```
 
 
+These identified countries perform well compared to their continental peers, with low youth unemployment and high net migration rates. This combination indicates economic opportunities that retain local youth in the workforce and attract migrants.
 
+Interestingly, these countries span different income groups, suggesting that relative performance within a continent is not solely determined by income classification. The presence of countries from various regions demonstrates that success in these metrics can be achieved through different policy approaches adapted to local conditions.
+
+Policymakers might look to these nations as case studies for successful strategies in youth employment and migration management within their respective continents.
 
 ## g. Conditional Probabilities
 
