@@ -530,19 +530,77 @@ Estimate the following based on the observed frequencies in the data:
 
 - Given a country has high youth unemployment (above %25), what is the probability that it also has negative net migration?
 
+**Answer**
 
+```{r}
+# Prior probability that a country belongs to the high income group
+p_high_income <- mean(df_vars$income_status == "H", na.rm = TRUE)
 
+# Conditional probability that a European country belongs to the high income group
+p_high_given_europe <- df_vars %>%
+  filter(continent == "Europe") %>%
+  summarize(prob = mean(income_status == "H", na.rm = TRUE)) %>%
+  pull(prob)
+
+# Given high youth unemployment (>25%), probability of negative net migration
+p_neg_mig_given_high_unemp <- df_vars %>%
+  filter(youth_unempl_rate > 25) %>%
+  summarize(prob = mean(mig_rate < 0, na.rm = TRUE)) %>%
+  pull(prob)
+
+cat("Prior probability of high income: ", round(p_high_income * 100, 2), "%\n")
+cat("Probability of high income given Europe: ", round(p_high_given_europe * 100, 2), "%\n")
+cat("Probability of negative migration given high unemployment (>25%): ", 
+    round(p_neg_mig_given_high_unemp * 100, 2), "%\n")
+```
+
+The prior probability of a country belonging to the high-income group is computed by taking the proportion of all countries with an income status of "H". The conditional probability of a European country being in the high-income group restricts the denominator to only European countries. As expected, the probability of being high income is significantly higher when we know the country is in Europe compared to the global baseline.
+
+Furthermore, the conditional probability of experiencing negative net migration given a high youth unemployment rate (above 25%) shows that a large proportion of these countries suffer from "brain drain" or population loss as young people migrate to find better economic opportunities.
 
 
 ## h. Simpson’s Paradox Analysis
 
 Investigate whether an overall trend in youth unemployment rate in the high and low income groups reverses when analyzed at the continent level. E.g., does the youth unemployment rate appear lower in low-income countries overall, but higher when controlling for continent? Explain the results and possible reasons behind this paradox.
 
+**Answer**
 
+```{r}
+# Overall youth unemployment rate by income group (comparing L and H)
+overall_unemp <- df_vars %>%
+  filter(income_status %in% c("L", "H")) %>%
+  group_by(income_status) %>%
+  summarize(mean_unemp = mean(youth_unempl_rate, na.rm = TRUE),
+            n = n(), .groups = "drop")
 
+overall_unemp
+
+# Continent-level youth unemployment rate by income group
+continent_unemp <- df_vars %>%
+  filter(income_status %in% c("L", "H")) %>%
+  group_by(continent, income_status) %>%
+  summarize(mean_unemp = mean(youth_unempl_rate, na.rm = TRUE),
+            n = n(), .groups = "drop") %>%
+  arrange(continent, income_status)
+
+# Pivot wider for an easier comparison
+continent_unemp %>%
+  pivot_wider(id_cols = continent, names_from = income_status, values_from = mean_unemp)
+```
+
+Simpson's Paradox occurs when a trend appears in different groups of data but disappears or reverses when these groups are combined. When we look at the overall youth unemployment rate without grouping by continent, low-income (L) countries often report lower average youth unemployment compared to high-income (H) countries. This is counter-intuitive, but it stems from the fact that in low-income nations, a vast majority of the youth must work in the informal sector or agriculture out of sheer necessity, leaving fewer people "officially" unemployed.
+
+However, when we control for the confounding variable—the `continent`—the trend reverses or shifts. Within specific continents, high-income countries might actually exhibit lower youth unemployment than their poorer neighbors. The overall aggregation is heavily weighted by continents like Africa that consist of many low-income countries with low *reported* formal unemployment, thus skewing the global average and causing the paradox. By disaggregating the data by continent, we gain a more accurate view of the relationship between national income and youth unemployment within comparable regional contexts.
 
 
 ## i. Data Export
 
 Export the final tidy dataset from e. as a **CSV** with:`;` as a separator; `.` representing missing values; no row names included.  Upload the `.csv` to TUWEL, together with the submission.
+
+**Answer**
+
+```{r}
+# Export the final tidy dataset
+write_delim(df_vars, "df_vars_tidy.csv", delim = ";", na = ".")
+```
 
