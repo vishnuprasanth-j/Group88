@@ -16,16 +16,16 @@ knitr::opts_chunk$set(echo = TRUE)
 \begin{table}[ht]
 \centering
 \caption{You can use and extend this table to specify your AI usage (if used at all).}
-\begin{tabular}{l|rrrr}
+\begin{tabular}{l|rrrrrrrrrr}
 \toprule
-\textbf{AI usage} & \textbf{Task a} & \textbf{Task b} & \textbf{Task c} & \ldots \\
+\textbf{AI usage} & \textbf{Task a} & \textbf{Task b} & \textbf{Task c} & \textbf{Task d} & \textbf{Task e} & \textbf{Task f} & \textbf{Task g} & \textbf{Task h} & \textbf{Task i} & \ldots \\
 \midrule
-\textit{Correcting faulty code}       &  medium   & medium   & medium   &  \ldots \\
-\textit{Improving existing code}      &  no       & no       & no       &  \ldots \\
-\textit{Generating new code}          &  no       & no       & no       &  \ldots \\
-\textit{Layout and formatting}        &  no       & no       & no       &  \ldots \\
-\textit{Text correction and rewording}&  heavy    & heavy    & heavy    &  \ldots \\
-\ldots  & & & & \\
+\textit{Correcting faulty code}       & medium & medium & medium & medium & medium & medium & medium & medium & medium & \ldots \\
+\textit{Improving existing code}      & no     & no     & no     & no     & no     & no     & no     & no     & no     & \ldots \\
+\textit{Generating new code}          & no     & no     & no     & no     & no     & no     & no     & no     & no     & \ldots \\
+\textit{Layout and formatting}        & no     & no     & no     & no     & no     & no     & no     & no     & no     & \ldots \\
+\textit{Text correction and rewording}& heavy  & heavy  & heavy  & heavy  & heavy  & heavy  & heavy  & heavy  & heavy  & \ldots \\
+\ldots  & & & & & & & & & & \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -589,6 +589,8 @@ continent_unemp %>%
 ```
 
 Simpson's Paradox occurs when a trend appears in different groups of data but disappears or reverses when these groups are combined. When we look at the overall youth unemployment rate without grouping by continent, low-income (L) countries often report lower average youth unemployment compared to high-income (H) countries. This is counter-intuitive, but it stems from the fact that in low-income nations, a vast majority of the youth must work in the informal sector or agriculture out of sheer necessity, leaving fewer people "officially" unemployed.
+
+Policy and institutional differences: Even within the same income classification, countries have different education systems, labor market regulations, and social safety nets that affect youth employment.
 
 However, when we control for the confounding variable—the `continent`—the trend reverses or shifts. Within specific continents, high-income countries might actually exhibit lower youth unemployment than their poorer neighbors. The overall aggregation is heavily weighted by continents like Africa that consist of many low-income countries with low *reported* formal unemployment, thus skewing the global average and causing the paradox. By disaggregating the data by continent, we gain a more accurate view of the relationship between national income and youth unemployment within comparable regional contexts.
 
