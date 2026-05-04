@@ -15,20 +15,36 @@ knitr::opts_chunk$set(echo = TRUE)
 
 \begin{table}[ht]
 \centering
-\caption{You can use and extend this table to specify your AI usage (if used at all).}
-\begin{tabular}{l|rrrrrrrrrr}
+
+\begin{tabular}{l|rrrrrr}
 \toprule
-\textbf{AI usage} & \textbf{Task a} & \textbf{Task b} & \textbf{Task c} & \textbf{Task d} & \textbf{Task e} & \textbf{Task f} & \textbf{Task g} & \textbf{Task h} & \textbf{Task i} & \ldots \\
+\textbf{AI usage} & \textbf{Task a} & \textbf{Task b} & \textbf{Task c} & \textbf{Task d} & \textbf{Task e} \\
 \midrule
-\textit{Correcting faulty code}       & medium & medium & medium & medium & medium & medium & medium & medium & medium & \ldots \\
-\textit{Improving existing code}      & no     & no     & no     & no     & no     & no     & no     & no     & no     & \ldots \\
-\textit{Generating new code}          & no     & no     & no     & no     & no     & no     & no     & no     & no     & \ldots \\
-\textit{Layout and formatting}        & no     & no     & no     & no     & no     & no     & no     & no     & no     & \ldots \\
-\textit{Text correction and rewording}& heavy  & heavy  & heavy  & heavy  & heavy  & heavy  & heavy  & heavy  & heavy  & \ldots \\
-\ldots  & & & & & & & & & & \\
+\textit{Correcting faulty code}       & medium & medium & medium & medium & medium \\
+\textit{Improving existing code}      & no     & no     & no     & no     & no     \\
+\textit{Generating new code}          & no     & no     & no     & no     & no     \\
+\textit{Layout and formatting}        & no     & no     & no     & no     & no     \\
+\textit{Text correction and rewording}& heavy  & heavy  & heavy  & heavy  & heavy  \\
 \bottomrule
 \end{tabular}
+
+\begin{tabular}{l|rrrrr}
+\toprule
+\textbf{AI usage} & \textbf{Task f} & \textbf{Task g} & \textbf{Task h} & \textbf{Task i} \\
+\midrule
+\textit{Correcting faulty code}       & medium & medium & medium & medium \\
+\textit{Improving existing code}      & no     & no     & no     & no     \\
+\textit{Generating new code}          & no     & no     & no     & no     \\
+\textit{Layout and formatting}        & no     & no     & no     & no     \\
+\textit{Text correction and rewording}& heavy  & heavy  & heavy  & heavy  \\
+\bottomrule
+\end{tabular}
+
+
+\caption{AI usage for this solution.}
 \end{table}
+
+
 
 
 The CIA World Factbook provides intelligence on various aspects of 266 world entities, including history, people, government, economy, energy, geography, environment, communications, transportation, military, terrorism, and transnational issues. This case study involves analyzing world data from 2020, focusing on:
@@ -45,6 +61,7 @@ library(readr)
 library(dplyr)
 library(stringr)
 library(readxl)
+library(tidyr)
 ```
 
 # Tasks:
@@ -62,6 +79,7 @@ Load the following datasets from TUWEL and ensure that missing values are handle
 
 
 **Answer**
+
 First of all we want to read all the data. According to the task each data set should ultimately contain only two columns: `country` and the respective measured variable, so the rank and the year of the last update are dropped during import.
 
 ```{r, message=FALSE}
@@ -235,35 +253,26 @@ Introduce continent and subcontinent (or region) data for each country.
 - Find and download an appropriate online resource.
 - Merge this information into the dataset, naming the final dataset `df_vars`. Make sure you are not losing any of the countries in your original data set when merging.
 
+
+**Answer**
+
 We found this source <https://unstats.un.org/unsd/methodology/m49/overview/>, which satisfies our need to introduce continent and subcontinent data for each country.
 ```{r}
-
 geographical_info <- read.csv(
   "unsd.csv",
   header = TRUE,
   sep = ";"
 )
 
-# removing redundant country column
-geographical_info$Global.Code <- NULL
-geographical_info$Global.Name <- NULL
-geographical_info$Region.Code <- NULL
-geographical_info$Global.Code <- NULL
-geographical_info$Sub.region.Code <- NULL
-geographical_info$Intermediate.Region.Code <- NULL
-geographical_info$Intermediate.Region.Name <- NULL
-geographical_info$Country.or.Area <- NULL
-geographical_info$M49.Code <- NULL
-geographical_info$ISO.alpha2.Code <- NULL
-geographical_info$Least.Developed.Countries..LDC. <- NULL
-geographical_info$Land.Locked.Developing.Countries..LLDC. <- NULL
-geographical_info$Small.Island.Developing.States..SIDS. <- NULL
-
-# renaming columns to have a coherent naming
-colnames(geographical_info) <- c("continent", "subcontinent", "iso-code")
+# select only relevant columns and change to coherent naming
+geographical_info <- geographical_info %>%
+  select(
+    continent = Region.Name,
+    subcontinent = Sub.region.Name,
+    `iso-code` = ISO.alpha3.Code
+  )
 
 head(geographical_info)
-
 ```
 
 
@@ -282,88 +291,92 @@ head(df_vars)
 (observational units, variables, fixed vs. measured variables).
 Make adjustments to tidy the data, if necessary.
 
+
+**Answer**
+
 The dataset currently adheres to the standards of tidy data:
 
- - Every column represents a single variable, and every row represents a unique observation without duplicates.
-
- - Fixed variables include: country, GENC, income_status, continent, and subcontinent.
-
- - Measured variables include: mig_rate, edu_exp, and youth_unempl_rate
+- Every column represents a single variable, and every row represents a unique observation without duplicates.
+- Fixed variables include: `country`, `GENC`, `income_status`, `continent`, and `subcontinent`.
+- Measured variables include: `mig_rate`, `edu_exp`, and `youth_unempl_rate`
 
 
 Overall, the data is already tidy, but a few minor tweaks can be made to improve readability:
 
-  - The GENC column name isn't immediately clear, renaming it to iso_code would be more intuitive.
-  
-  - The columns should be reordered so that all fixed variables are grouped together, followed by the measured variables.
-```{r}
+- The `GENC` column name isn't immediately clear, renaming it to `iso_code` would be more intuitive.
+- The columns should be reordered so that all fixed variables are grouped together, followed by the measured variables.
 
+```{r}
 # Rename GENC to iso-code
-df_vars <- df_vars %>% rename(
-    iso_code = GENC
-    )
+df_vars <- df_vars %>% rename(iso_code = GENC)
 
 # sort columns
 df_vars <- df_vars %>%
-  select("country", "iso_code", "income_status", "continent", "subcontinent", "mig_rate", "edu_exp", "youth_unempl_rate")
-
+  select("country", "iso_code", "income_status", "continent", "subcontinent",
+         "mig_rate", "edu_exp", "youth_unempl_rate")
 
 head(df_vars)
-
 ```
+
+
 
 - Create a frequency table for the income status variable and briefly interpret the results.
 
-The dataset is skewed toward wealthier categories, with over 60% of the observations falling into the Upper Middle and High-Income brackets. Conversely, the Low-Income bracket is underrepresented. This imbalance must be considered when deriving results or drawing conclusions from the data, as it may introduce bias.
-```{r}
 
-    income_freq <- function () {df_vars %>% 
-      count(income_status, name = "n") %>%       
-      mutate(percent = round(100 * n / sum(n), 1)) 
-    }
-    head(income_freq())
+**Answer**
+
+```{r}
+income_freq <- df_vars %>%
+  count(income_status, name = "n") %>%
+  mutate(percent = round(100 * n / sum(n), 1))
+
+head(income_freq)
 ```
+
+The dataset is skewed toward wealthier categories, with over 60% of the observations falling into the Upper Middle and High-Income brackets. Conversely, the Low-Income bracket is underrepresented. This imbalance must be considered when deriving results or drawing conclusions from the data, as it may introduce bias.
+
 
 - Analyze the distribution of income status across continents by computing absolute and relative frequencies. Comment on the findings.
 
 
-
-
-  We can see a quite expected overall picture of how the income groups are distributed around the world: In Africa, most countries are classified as lower middle or low income countries, however there are a few countries with upper middle income and even one with high income.
-    Europe leads with over 80% high income countries.
-    Asia has many countries in the lower middle field but also some countries with higher income.
-    Oceania has more high income countries (\~43%) but also 28% classified as low middle income.
+**Answer**
 
 ```{r}
-library(tidyr)
+income_by_continent <- df_vars %>%
+  group_by(continent, income_status) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(continent) %>%
+  mutate(percent = round(100 * n / sum(n), 1)) %>%
+  ungroup() %>% 
+  arrange(continent, desc(percent))
 
-    income_by_continent <- df_vars %>% 
-      group_by(continent, income_status) %>%        
-      summarise(n = n(), .groups = "drop") %>%       
-      group_by(continent) %>%                  
-      mutate(percent = round(100 * n / sum(n), 1)) %>% 
-      ungroup() %>% 
-      arrange(continent, desc(percent))
-    # easier to analyze
-    income_by_continent_wide <- income_by_continent %>%
-      pivot_wider(names_from  = income_status,
-                  values_from = c(n, percent),
-                  values_fill = 0)
+# easier to analyze
+income_by_continent_wide <- income_by_continent %>%
+  pivot_wider(names_from  = income_status,
+              values_from = c(n, percent),
+              values_fill = 0)
 
-    income_by_continent_wide
-
+income_by_continent_wide
 ```
+
+We can see a quite expected overall picture of how the income groups are distributed around the world: In Africa, most countries are classified as lower middle or low income countries, however there are a few countries with upper middle income and even one with high income.
+Europe leads with over 80% high income countries.
+Asia has many countries in the lower middle field but also some countries with higher income.
+Oceania has more high income countries (\~43%) but also 28% classified as low middle income.
+
 
 
 - Using the distribution of income status across continents, identify which countries are the only ones in their income group across the continent. Discuss briefly.
 
+
+**Answer**
+
 Seychelles is the only high-income country in Africa, likely due to its thriving tourism sector
 
 ```{r}
- df_vars %>%
-          filter(continent== "Africa", income_status == "H") %>%
-          select(country)
-
+df_vars %>%
+  filter(continent== "Africa", income_status == "H") %>%
+  select(country)
 ```
 
 
@@ -372,6 +385,8 @@ Seychelles is the only high-income country in Africa, likely due to its thriving
 
 - Create a table of average (mean and median) values for expenditure, youth unemployment rate and net migration rate separated into income status. Make sure that in the output, the ordering of the income classes is proper (i.e., L, LM, UM, H or the other way around). Briefly comment the results and any differences between the mean and median. 
 
+
+**Answer**
 
 ```{r}
 summary_stats <- df_vars %>%
@@ -396,6 +411,9 @@ Education expenditure steadily increases with country wealth, while high income 
 
 
 - Look at the standard deviation and the interquartile range of the variables per income status instead of the location statistics above. Do you gain additional insights? Briefly comment the results. 
+
+
+**Answer**
 
 ```{r}
 dispersion_stats <- df_vars %>%
@@ -422,6 +440,8 @@ By looking at the spread, we learn that High income countries are generally more
 `pivot_wider()` to generate different outputs. 
 Discuss the results as well as the readability of the different tables.
 
+
+**Answer**
 
 ```{r}
 # Creating a comprehensive table with median and IQR for each variable by income group and continent
@@ -493,6 +513,9 @@ Breaking the data down by continent reveals wealth disparities. Africa is domina
 When comparing table readability, the long, nested format (Format 3) is vastly superior for professional reporting. It neatly pairs the median and IQR while keeping the table narrow and visually clean. In contrast, the wide format (Format 2) is difficult to read on a screen or page due to horizontal bloat and a clutter of NA values for non-existent continent-income combinations, though it does remain useful for quick, left-to-right data exploration.
 
 - Identify countries performing well in terms of both **youth unemployment** and **net migration rate** (top 25% in net migration and bottom 25% in youth unemployment within their continent).
+
+
+**Answer**
 
 ```{r}
 
