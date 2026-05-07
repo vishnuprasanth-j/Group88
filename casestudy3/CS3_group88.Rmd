@@ -51,8 +51,6 @@ header-includes:
 \caption{AI usage for this solution.}
 \end{table}
 
-*The  .Rmd* **and** *.html (or .pdf) should be uploaded in TUWEL by the deadline. Refrain from using explanatory comments in the R code chunks but write them as text instead. Points will be deducted if the submitted file is not in a decent form.*
-
 
 # Data
 
@@ -70,6 +68,34 @@ for most world entities in 2020. The data was downloaded from https://www.cia.go
 Additional information on continent, subcontinent/region and income status was appended 
 to the dataset in Case Study 2.
 
+
+**Setup**
+This setup includes loading the necessary libraries and reading the data from the provided `file_out2.csv`. We drop the unnecessary index column, filter for rows that have no `NA` in `status` and convert `status`, `low_yu` and `high_mnr` to factors.
+
+```{r}
+# load libraries
+library(readr)
+library(dplyr)
+library(stringr)
+library(readxl)
+library(tidyr)
+library(ggplot2)
+
+# read data
+data = read_csv("file_out2.csv", na=c("", ".")) %>%
+  select(-`...1`) %>%
+  filter(!is.na(status)) %>%
+  mutate(status = factor(status,
+                         levels = c("H", "UM", "LM", "L"),
+                         ordered = TRUE),
+         low_yu = factor(low_yu,
+                         levels = c("yes", "no")),
+         high_nmr = factor(high_nmr,
+                           levels = c("yes", "no")),
+         )
+# show structure
+str(data)
+```
 
 
 # Tasks:
@@ -94,6 +120,19 @@ income status such that in the plots the legend is ordered from High (H) to Low 
   Comment briefly on the plot.
 
 
+**Answer**
+```{r}
+ggplot(data, aes(x = expenditure, fill = status)) +
+  geom_density(colour = "black", alpha = 0.5) +
+  labs(x = "Education expenditure (% of GDP)", y = "Density") +
+  theme(legend.position = "top",
+        legend.title = element_blank(),
+        legend.justification = "center")
+```
+
+The distributions overlap quite strongly, so the differences between income groups are not clearly separated. High-income (H) and upper-middle-income (UM) countries appear to have many observations around roughly 4-5% of GDP and seem somewhat more concentrated than lower-income (L) and lower-middle-income (LM) countries. Lower-income countries are more concentrated at slightly lower education expenditure values, around 2-4% of GDP, but compared to H and UM countries their distribution appears more spread out. The long right tail, especially for the lower-middle-income group, suggests that a few countries spend a much higher share of GDP on education than most others.
+
+
 
 
 ## b. Income status in different continents
@@ -111,12 +150,56 @@ Comment the plot.
 distribution among the different continents.
 
 
+**Answer**
+
+```{r}
+ggplot(data, aes(x = continent, fill = status)) +
+  geom_bar(position="stack") +
+  labs(x = "Continent", y = "Count of Countries")
+```
+
+The absolute frequency barplot shows that Africa and Asia contain the largest number of countries in the data set, while Oceania has by far the fewest. In Africa most countries fall into the lower-middle (LM) and low (L) income categories, whereas Europe is dominated by high-income (H) countries. The Americas and Asia show a pretty balanced mix across income groups.
+
+```{r}
+ggplot(data, aes(x = continent, fill = status)) +
+  geom_bar(position="fill") +
+  labs(x = "Continent", y = "Share of Countries")
+```
+
+Plotting relative frequencies makes the differences in income arrangements more visible and comparable by removing the effect of how many countries each continent contributes. Europe is almost entirely high-income, Oceania and America have a large share of high-income countries as well, while Africa is dominated by low and lower-middle income countries with only a small high-income share. Asia appears comparatively heterogeneous, covering all four income statuses.
+
+```{r}
+mosaicplot(table(data$continent, data$status),
+           main = "Income Status by Continent",
+           xlab = "Continent",
+           ylab = "Income Status",
+           color = TRUE)
+```
+
+The mosaic plot encodes both pieces of information from the previous plots simultaneously: the width of each column reflects how many countries belong to a continent (like the absolute barplot) and the height of each tile reflects the income composition within that continent (like the relative barplot). The absolute barplot is best for reading off counts but hides composition differences for small continents. The relative barplot makes arrangements comparable across continents but loses the size information. The mosaic plot combines both at the cost of being slightly harder to read precise values from.
+
 
 
 ## c. Income status in different subcontinents
 
 For Oceania, investigate further how the income status distribution is in the different subcontinents.
 Use one of the plots in b. for this purpose. Comment on the results.
+
+
+**Answer**
+
+```{r}
+data %>%
+  filter(continent == "Oceania") %>%
+  ggplot(aes(x = subcontinent, fill = status)) +
+    geom_bar(position = "fill") +
+    labs(x = "Subcontinent",
+         y = "Proportion of Countries",
+         fill = "Income Status") +
+    theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust = 0.5))
+```
+
+Within Oceania the income status distribution differs strongly between subregions. Australia and New Zealand consist exclusively of high-income countries, while Melanesia and Polynesia are dominated by lower-middle and upper-middle income countries with essentially a moderate amount of high-income entries. It is also worth noting that there are no low-income countries.
 
 
 
@@ -134,6 +217,30 @@ which country in Asia constitutes the largest positive outlier.
 * Comment on the plot.
 
 
+**Answer**
+
+```{r}
+# with outliers
+ggplot(data, aes(x = continent, y = net_migr_rate)) +
+  geom_boxplot(fill = "orange", outliers = TRUE, notch = TRUE) +
+  labs(title = "Net Migration Rate by Continent (with outliers)",
+       x = "Continent", y = "Net Migration Rate")
+
+# without outliers
+ggplot(data, aes(x = continent, y = net_migr_rate)) +
+  geom_boxplot(fill = "orange", outliers = FALSE, notch = TRUE) +
+  labs(title = "Net Migration Rate by Continent (without outliers)",
+       x = "Continent", y = "Net Migration Rate")
+
+# identify largest negative and positive outliers in Asia
+data %>%
+  filter(continent == "Asia") %>%
+  filter(net_migr_rate == min(net_migr_rate, na.rm = TRUE)
+         | net_migr_rate == max(net_migr_rate, na.rm = TRUE)) %>%
+  select(country, net_migr_rate)
+```
+
+Most continents have median net migration rates close to zero or slightly negative, suggesting roughly balanced migration or slight net emigration. Europe stands out with a clearly positive median, while Oceania shows the largest spread, ranging from strong net emigration to net immigration. Overall, the plot suggests that continent-level summaries hide substantial differences between individual countries.
 
 
 ## e. Net migration in different subcontinents
@@ -148,6 +255,29 @@ using again parallel boxplots.  Group the boxplots by continent (hint: use `face
 * Remember to prettify the plot (rotate axis labels if needed).
 
 * Describe what you see.
+
+
+**Answer**
+
+```{r}
+# with outliers
+ggplot(data, aes(x = subcontinent, y = net_migr_rate)) +
+  geom_boxplot(fill = "orange", outliers = TRUE) +
+  facet_grid(. ~ continent, scales = "free_x", space = "free_x") +
+  labs(title = "Net Migration Rate by Subcontinent (with outliers)",
+       x = "Subcontinent", y = "Net Migration Rate") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# without outliers
+ggplot(data, aes(x = subcontinent, y = net_migr_rate)) +
+  geom_boxplot(fill = "orange", outliers = FALSE) +
+  facet_grid(. ~ continent, scales = "free_x", space = "free_x") +
+  labs(title = "Net Migration Rate by Subcontinent (without outliers)",
+       x = "Subcontinent", y = "Net Migration Rate") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Splitting by subcontinent reveals patterns that were hidden in the continent-level boxplots. In Asia, Western Asia shows the widest spread, ranging from negative to strongly positive net migration rates. In the Americas, Northern America is clearly positive, while Latin America and the Caribbean tends to be negative. African subregions are mostly slightly below zero, suggesting moderate net emigration. European subregions are generally positive or close to zero, especially Northern and Western Europe. Oceania shows strong variation, with Australia and New Zealand positive, while Micronesia and Polynesia are strongly negative.
 
 
 
