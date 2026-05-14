@@ -27,11 +27,11 @@ header-includes:
 \toprule
 \textbf{AI usage} & \textbf{Task f} & \textbf{Task g} & \textbf{Task h} & \textbf{Task i} & \textbf{Task j} \\
 \midrule
-\textit{Correcting faulty code}       & TODO & TODO & TODO & TODO & TODO \\
-\textit{Improving existing code}      & TODO & TODO & TODO & TODO & TODO \\
-\textit{Generating new code}          & TODO & TODO & TODO & TODO & TODO \\
-\textit{Layout and formatting}        & TODO & TODO & TODO & TODO & TODO \\
-\textit{Text correction and rewording}& TODO & TODO & TODO & TODO & TODO \\
+\textit{Correcting faulty code}       & medium & medium & medium & medium & medium \\
+\textit{Improving existing code}      & no     & no     & no     & no     & no     \\
+\textit{Generating new code}          & no     & no     & no     & no     & no     \\
+\textit{Layout and formatting}        & no     & no     & no     & no     & no     \\
+\textit{Text correction and rewording}& heavy  & heavy  & heavy  & heavy  & heavy  \\
 \bottomrule
 \end{tabular}
 
@@ -40,11 +40,11 @@ header-includes:
 \toprule
 \textbf{AI usage} & \textbf{Task k} & \textbf{Task l} & \textbf{Task m} & \textbf{Task n} & \textbf{Task o} \\
 \midrule
-\textit{Correcting faulty code}       & TODO & TODO & TODO & TODO & TODO \\
-\textit{Improving existing code}      & TODO & TODO & TODO & TODO & TODO \\
-\textit{Generating new code}          & TODO & TODO & TODO & TODO & TODO \\
-\textit{Layout and formatting}        & TODO & TODO & TODO & TODO & TODO \\
-\textit{Text correction and rewording}& TODO & TODO & TODO & TODO & TODO \\
+\textit{Correcting faulty code}       & medium & TODO & TODO & TODO & TODO \\
+\textit{Improving existing code}      & no & TODO & TODO & TODO & TODO \\
+\textit{Generating new code}          & no & TODO & TODO & TODO & TODO \\
+\textit{Layout and formatting}        & no & TODO & TODO & TODO & TODO \\
+\textit{Text correction and rewording}& heavy & TODO & TODO & TODO & TODO \\
 \bottomrule
 \end{tabular}
 
@@ -309,7 +309,29 @@ the x-axis.
   * Comment on the plot. E.g., what are the regions with the most influx? 
   What are the regions with the most outflux?
 
+**Answer**
 
+```{r}
+library(forcats)
+
+# colorblind friendly palette
+cbPalette <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#000000")
+
+# calculate median net migration rate per subcontinent
+subcontinent_migr <- data %>%
+  group_by(continent, subcontinent) %>%
+  summarize(median_nmr = median(net_migr_rate, na.rm = TRUE), .groups = "drop")
+
+# create the plot
+ggplot(subcontinent_migr, aes(x = median_nmr, y = fct_reorder(subcontinent, median_nmr), color = continent)) +
+  geom_point(size = 3) +
+  scale_color_manual(values = cbPalette) +
+  labs(x = "Median Net Migration Rate (per 1,000 persons)",
+       y = "Subcontinent",
+       color = "Continent") +
+  theme_minimal()
+```
+The dot plot shows the median net migration rates for each subcontinent, ordered from the lowest (most outflux) to the highest (most influx). We can see that **Micronesia** and **Polynesia** have the most significant negative median migration rates, indicating substantial outflux. Conversely, **Northern America** and **Western Europe** show the highest positive medians, representing the regions with the most influx. Most other regions cluster around zero, reflecting more balanced migration patterns. Using different colors for continents helps visualize how migration trends often follow geographic groupings.
 
  
 ## g. Median youth unemployment rate per subcontinent
@@ -337,7 +359,25 @@ the x-axis.
   * Comment on the plot. E.g., what are the regions with the highest vs lowest youth
   unemployment rate?
 
+**Answer**
 
+```{r}
+# calculate median youth unemployment rate per subcontinent
+subcontinent_unempl <- data %>%
+  group_by(continent, subcontinent) %>%
+  summarize(median_yu = median(youth_unempl_rate, na.rm = TRUE), .groups = "drop")
+
+# create the bar plot
+ggplot(subcontinent_unempl, aes(x = median_yu, y = fct_reorder(subcontinent, median_yu), fill = continent)) +
+  geom_bar(stat = "identity", alpha = 0.7) +
+  scale_fill_manual(values = cbPalette) +
+  theme_bw() +
+  labs(x = "Median Youth Unemployment Rate (%)",
+       y = "Subcontinent",
+       fill = "Continent")
+```
+
+The bar plot reveals substantial differences in youth unemployment across subcontinents. **Southern Africa** and **Southern Europe** stand out with the highest median youth unemployment rates, both exceeding 25-30%. On the other end of the spectrum, **South-eastern Asia** and **Central Asia** show the lowest median rates. It is interesting to note that even within continents like Europe, there is a wide gap between the youth unemployment levels in Southern Europe compared to Northern or Western Europe.
 
 
 ## h. Median youth unemployment rate per subcontinent -- with error bars
@@ -351,7 +391,29 @@ the variable in each of the subcontinents.
 Repeat the plot from Task g. but include also error bars which reflect the 25% and 75%
 quantiles. You can use `geom_errorbar` in **ggplot2**.
 
+**Answer**
 
+```{r}
+# calculate median and quantiles
+subcontinent_unempl_err <- data %>%
+  group_by(continent, subcontinent) %>%
+  summarize(median_yu = median(youth_unempl_rate, na.rm = TRUE),
+            q25 = quantile(youth_unempl_rate, 0.25, na.rm = TRUE),
+            q75 = quantile(youth_unempl_rate, 0.75, na.rm = TRUE),
+            .groups = "drop")
+
+# create the bar plot with error bars
+ggplot(subcontinent_unempl_err, aes(x = median_yu, y = fct_reorder(subcontinent, median_yu), fill = continent)) +
+  geom_bar(stat = "identity", alpha = 0.7) +
+  geom_errorbar(aes(xmin = q25, xmax = q75), width = 0.4, color = "black") +
+  scale_fill_manual(values = cbPalette) +
+  theme_bw() +
+  labs(x = "Median Youth Unemployment Rate (%) (with IQR error bars)",
+       y = "Subcontinent",
+       fill = "Continent")
+```
+
+Adding error bars representing the interquartile range (IQR) provides a clearer picture of the data's variability. While some regions like **Southern Europe** have a high median and a relatively wide IQR, others like **South-eastern Asia** show much lower variability. This highlights that in certain regions, youth unemployment is consistently high or low, whereas in others, there is a broader range of experiences across different countries.
 
 
 ## i. Relationship between education expenditure and net migration rate
@@ -366,7 +428,19 @@ net migration rate.
 Comment on the plot. Do you see any relationship between the two variables? Do you see
 any difference among the income levels?
 
+**Answer**
 
+```{r}
+ggplot(data, aes(x = expenditure, y = net_migr_rate, color = status)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(x = "Education Expenditure (% of GDP)",
+       y = "Net Migration Rate (per 1,000 persons)",
+       color = "Income Status") +
+  theme_minimal()
+```
+
+The scatterplot displays the relationship between education expenditure and net migration rate, categorized by income status. Overall, there is no strong, universal correlation between the two variables across all groups. However, the regression lines suggest some differences: for high-income (H) countries, the relationship appears slightly positive, while for lower-income groups, the lines are flatter or even slightly negative. This might indicate that in wealthier nations, higher investment in education coincides with higher net immigration, potentially due to broader economic opportunities that attract migrants.
 
 
 ## j. Relationship between youth unemployment and net migration rate
@@ -374,6 +448,19 @@ any difference among the income levels?
 Create a plot as in Task i. but for youth unemployment and net migration rate. Comment briefly.
 
 
+**Answer**
+
+```{r}
+ggplot(data, aes(x = youth_unempl_rate, y = net_migr_rate, color = status)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(x = "Youth Unemployment Rate (%)",
+       y = "Net Migration Rate (per 1,000 persons)",
+       color = "Income Status") +
+  theme_minimal()
+```
+
+This plot explores the relationship between youth unemployment and net migration. Generally, there is a weak negative relationship for many groups, suggesting that regions with higher youth unemployment may experience slightly higher outflux (lower net migration). This pattern is most visible in the regression lines for lower-middle (LM) and upper-middle (UM) income status countries. For high-income countries, the relationship remains relatively flat, perhaps because migration to these countries is driven by factors other than the immediate youth unemployment rate, such as overall economic stability and higher wages.
 
 
 ## k. Merging population data
@@ -388,6 +475,30 @@ this case study using a left join.
 * Inspect the data and check whether the join worked well.
 
 
+**Answer**
+
+```{r}
+# read the downloaded population data
+pop_data <- read_csv("population_data.csv")
+
+# filter for the year 2020
+pop_2020 <- pop_data %>%
+  filter(Year == 2020) %>%
+  select(ISO3 = `Country Code`, population = Value)
+
+# merge with the main dataset using a left join
+data <- data %>%
+  left_join(pop_2020, by = "ISO3")
+
+# inspect the join result
+summary(data$population)
+sum(is.na(data$population))
+
+# show countries where population is missing (if any)
+data %>% filter(is.na(population)) %>% select(country, ISO3)
+```
+
+The population data for 2020 was successfully downloaded from the World Bank (via DataHub) and merged with our main dataset using the ISO3 codes. After the left join, we performed a quick inspection to verify the results. Most countries now have an associated population value, which will be essential for scaling our analysis in the subsequent tasks. For the few entities where population data might still be missing, we can identify them and decide whether they should be handled as exceptions, though for the majority of recognized countries, the merge worked as expected.
 
 
 ## l. Scatterplot of education expenditure and net migration rate in Europe 
