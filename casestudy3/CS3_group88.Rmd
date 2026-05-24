@@ -333,7 +333,7 @@ ggplot(subcontinent_migr, aes(x = median_nmr, y = fct_reorder(subcontinent, medi
        color = "Continent") +
   theme_minimal()
 ```
-The dot plot shows the median net migration rates for each subcontinent, ordered from the lowest (most outflux) to the highest (most influx). We can see that **Micronesia** and **Polynesia** have the most significant negative median migration rates, indicating substantial outflux. Conversely, **Northern America** and **Western Europe** show the highest positive medians, representing the regions with the most influx. Most other regions cluster around zero, reflecting more balanced migration patterns. Using different colors for continents helps visualize how migration trends often follow geographic groupings.
+The dot plot shows the median net migration rates for each subcontinent, ordered from the lowest (most outflux) to the highest (most influx). We can see that **Micronesia** and **Polynesia** have the most significant negative median migration rates, indicating substantial outflux. Conversely, **Australia and New Zealend**, **Northern America** and **Western Europe** show the highest positive medians, representing the regions with the most influx. Most other regions cluster around zero, reflecting more balanced migration patterns. Using different colors for continents helps visualize how migration trends often follow geographic groupings.
 
  
 ## g. Median youth unemployment rate per subcontinent
@@ -380,7 +380,7 @@ ggplot(subcontinent_unempl, aes(x = median_yu, y = fct_reorder(subcontinent, med
        fill = "Continent")
 ```
 
-The bar plot reveals substantial differences in youth unemployment across subcontinents. **Southern Africa** and **Southern Europe** stand out with the highest median youth unemployment rates, both exceeding 25-30%. On the other end of the spectrum, **South-eastern Asia** and **Central Asia** show the lowest median rates. It is interesting to note that even within continents like Europe, there is a wide gap between the youth unemployment levels in Southern Europe compared to Northern or Western Europe.
+The bar plot reveals substantial differences in youth unemployment across subcontinents. **Northern Africa** and **Southern Europe** stand out with the highest median youth unemployment rates, both exceeding 25-30%. On the other end of the spectrum, **Eastern Asia** and **Central Asia** show the lowest median rates. It is interesting to note that even within continents like Europe, there is a wide gap between the youth unemployment levels in Southern Europe compared to Northern or Western Europe.
 
 
 ## h. Median youth unemployment rate per subcontinent -- with error bars
@@ -417,7 +417,7 @@ ggplot(subcontinent_unempl_err, aes(x = median_yu, y = fct_reorder(subcontinent,
        fill = "Continent")
 ```
 
-Adding error bars representing the interquartile range (IQR) provides a clearer picture of the data's variability. While some regions like **Southern Europe** have a high median and a relatively wide IQR, others like **South-eastern Asia** show much lower variability. This highlights that in certain regions, youth unemployment is consistently high or low, whereas in others, there is a broader range of experiences across different countries.
+Adding error bars representing the interquartile range (IQR) provides a clearer picture of the data's variability. While some regions like **Western Asia** have a high median and a relatively wide IQR, others like **South-eastern Asia** show much lower variability. This highlights that in certain regions, youth unemployment is consistently high or low, whereas in others, there is a broader range of experiences across different countries.
 
 
 ## i. Relationship between education expenditure and net migration rate
