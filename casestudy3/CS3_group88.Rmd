@@ -40,11 +40,11 @@ header-includes:
 \toprule
 \textbf{AI usage} & \textbf{Task k} & \textbf{Task l} & \textbf{Task m} & \textbf{Task n} & \textbf{Task o} \\
 \midrule
-\textit{Correcting faulty code}       & medium & TODO & TODO & TODO & TODO \\
-\textit{Improving existing code}      & no & TODO & TODO & TODO & TODO \\
-\textit{Generating new code}          & no & TODO & TODO & TODO & TODO \\
-\textit{Layout and formatting}        & no & TODO & TODO & TODO & TODO \\
-\textit{Text correction and rewording}& heavy & TODO & TODO & TODO & TODO \\
+\textit{Correcting faulty code}       & medium & medium & medium & medium & medium \\
+\textit{Improving existing code}      & no & no & no & no & no \\
+\textit{Generating new code}          & medium & no & no & no & yes \\
+\textit{Layout and formatting}        & no & no & no & no & no \\
+\textit{Text correction and rewording}& heavy & heavy & no & heavy & heavy \\
 \bottomrule
 \end{tabular}
 
