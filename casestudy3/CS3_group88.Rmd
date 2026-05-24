@@ -519,6 +519,7 @@ Make a scatterplot of education expenditure and net migration rate for the count
   
   * Comment on the plot.
 
+**Answer**
 
 ```{r}
 # Filter for European countries
@@ -558,8 +559,10 @@ To avoid build errors, you can wrap interactive plots in a conditional check
 or set the chunk option `eval=FALSE`. Alternatively, you can use the **webshot** 
 package to automatically convert interactive elements into static images during the knit process.
 
+
+**Answer**
+
 ```{r}
-install.packages("plotly")
 library(plotly)
 
 interactive_plot <- ggplot(data_case_study2, aes(x = expenditure, y = net_migr_rate, text = country)) +
@@ -574,11 +577,15 @@ interactive_plot <- ggplot(data_case_study2, aes(x = expenditure, y = net_migr_r
     legend.position = "top"
   )
 
-ggplotly(interactive_plot, tooltip = c("text", "x", "y", "size")) %>%
-  layout(
-    xaxis = list(title = "Education Expenditure (% of GDP)"),
-    yaxis = list(title = "Net Migration Rate (per 1,000 population)")
-  )
+if (knitr::is_html_output()) {
+  ggplotly(interactive_plot, tooltip = c("text", "x", "y", "size")) %>%
+    layout(
+      xaxis = list(title = "Education Expenditure (% of GDP)"),
+      yaxis = list(title = "Net Migration Rate (per 1,000 population)")
+    )
+} else {
+  interactive_plot
+}
 
 ```
 
@@ -596,9 +603,9 @@ education expenditure, youth unemployment rate and net migration rate.
 Color the lines based on the income status. Briefly comment.
 
 
-```{r}
+**Answer**
 
-install.packages("GGally")
+```{r}
 library(GGally)
 
 # Create a parallel coordinate plot
@@ -617,7 +624,6 @@ ggparcoord(data_case_study2 %>% tidyr::drop_na(),
   theme(
     plot.title = element_text(face = "bold", hjust = 0.5)
   )
-
 ```
 
 
@@ -633,8 +639,9 @@ Create a world map of the education expenditure per country.
 You can use the vignette https://cran.r-project.org/web/packages/rworldmap/vignettes/rworldmap.pdf
 to find how to do this in R. Alternatively, you can use other packages (such as **ggplot2**, **sf** and **rnaturalearthdata**) to create a map.
 
+**Answer**
+
 ```{r}
-install.packages("rworldmap")
 library(rworldmap)
 
 world_map <- joinCountryData2Map(data_case_study2, joinCode = "ISO3", nameJoinColumn = "ISO3")
